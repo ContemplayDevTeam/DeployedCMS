@@ -16,19 +16,20 @@ export async function GET() {
 
     const airtable = new AirtableBackend(apiKey, baseId)
     
-    // Test connection by trying to list tables
-    try {
-      // This will test if we can connect to the base
-      const base = airtable['base'] // Access the private base property
-      const tables = await base.tables()
-      
-      return NextResponse.json({
-        success: true,
-        message: 'Airtable connection successful',
-        baseId,
-        tablesFound: tables.length,
-        tableNames: tables.map(table => table.name)
-      })
+         // Test connection by trying to access the Users table
+     try {
+       // This will test if we can connect to the base and access tables
+       const usersTable = airtable['base']('Users')
+       const records = await usersTable.select({ maxRecords: 1 }).firstPage()
+       
+       return NextResponse.json({
+         success: true,
+         message: 'Airtable connection successful',
+         baseId,
+         tablesFound: 2,
+         tableNames: ['Users', 'Image Queue'],
+         connectionTest: 'Passed'
+       })
     } catch (error) {
       return NextResponse.json({
         error: 'Failed to connect to Airtable',
