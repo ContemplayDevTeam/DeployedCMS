@@ -3,7 +3,7 @@ interface User {
   email: string
   isVerified: boolean
   isPaid: boolean
-  subscriptionTier: 'free' | 'basic' | 'pro'
+  subscriptionTier: 'Free' | 'Basic' | 'Pro' // Updated to match actual Airtable values
   createdDate: string
   lastLogin: string
 }
@@ -30,6 +30,17 @@ export class AirtableBackend {
     this.apiKey = apiKey
     this.baseId = baseId
     this.baseUrl = `https://api.airtable.com/v0/${baseId}`
+    
+    // Table IDs for this base
+    this.tableIds = {
+      users: 'Users', // Updated to use the correct table name
+      queue: 'Image Queue' // Updated to use the correct table name
+    }
+  }
+
+  private tableIds: {
+    users: string
+    queue: string
   }
 
   private async makeRequest(endpoint: string, options: RequestInit = {}) {
@@ -76,7 +87,7 @@ export class AirtableBackend {
     isVerified?: boolean
   }): Promise<User> {
     try {
-      const response = await this.makeRequest('/Users', {
+      const response = await this.makeRequest(`/${this.tableIds.users}`, {
         method: 'POST',
         body: JSON.stringify({
           records: [{
@@ -84,9 +95,9 @@ export class AirtableBackend {
               'Email': userData.email,
               'Is Verified': userData.isVerified || false,
               'Is Paid': false,
-              'Subscription Tier': 'free',
-              'Created Date': new Date().toISOString(),
-              'Last Login': new Date().toISOString()
+              'Subscription Tier': 'Free', // Changed from 'free' to 'Free' to match existing data
+              'Created Date': new Date().toISOString().split('T')[0], // Use YYYY-MM-DD format
+              'Last Login': new Date().toISOString().split('T')[0] // Use YYYY-MM-DD format
             }
           }]
         })
@@ -98,7 +109,7 @@ export class AirtableBackend {
         email: record.fields['Email'] as string,
         isVerified: record.fields['Is Verified'] as boolean,
         isPaid: record.fields['Is Paid'] as boolean,
-        subscriptionTier: record.fields['Subscription Tier'] as 'free' | 'basic' | 'pro',
+        subscriptionTier: record.fields['Subscription Tier'] as 'Free' | 'Basic' | 'Pro',
         createdDate: record.fields['Created Date'] as string,
         lastLogin: record.fields['Last Login'] as string
       }
@@ -110,7 +121,7 @@ export class AirtableBackend {
 
   async getUserByEmail(email: string): Promise<User | null> {
     try {
-      const url = `https://api.airtable.com/v0/${this.baseId}/Users?filterByFormula=${encodeURIComponent(`{Email} = '${email}'`)}`;
+      const url = `https://api.airtable.com/v0/${this.baseId}/${this.tableIds.users}?filterByFormula=${encodeURIComponent(`{Email} = '${email}'`)}`;
 
       const res = await fetch(url, {
         headers: {
@@ -136,7 +147,7 @@ export class AirtableBackend {
         email: record.fields['Email'] as string,
         isVerified: record.fields['Is Verified'] as boolean,
         isPaid: record.fields['Is Paid'] as boolean,
-        subscriptionTier: record.fields['Subscription Tier'] as 'free' | 'basic' | 'pro',
+        subscriptionTier: record.fields['Subscription Tier'] as 'Free' | 'Basic' | 'Pro',
         createdDate: record.fields['Created Date'] as string,
         lastLogin: record.fields['Last Login'] as string
       }
@@ -157,14 +168,14 @@ export class AirtableBackend {
         return false
       }
 
-      await this.makeRequest(`/Users`, {
+      await this.makeRequest(`/${this.tableIds.users}`, {
         method: 'PATCH',
         body: JSON.stringify({
           records: [{
             id: user.id,
             fields: {
               'Is Verified': true,
-              'Last Login': new Date().toISOString()
+              'Last Login': new Date().toISOString().split('T')[0] // Use YYYY-MM-DD format
             }
           }]
         })
@@ -177,14 +188,14 @@ export class AirtableBackend {
     }
   }
 
-  async updateUserPayment(email: string, isPaid: boolean, tier: 'free' | 'basic' | 'pro'): Promise<boolean> {
+  async updateUserPayment(email: string, isPaid: boolean, tier: 'Free' | 'Basic' | 'Pro'): Promise<boolean> {
     try {
       const user = await this.getUser(email)
       if (!user) {
         return false
       }
 
-      await this.makeRequest(`/Users`, {
+      await this.makeRequest(`/${this.tableIds.users}`, {
         method: 'PATCH',
         body: JSON.stringify({
           records: [{
@@ -192,7 +203,7 @@ export class AirtableBackend {
             fields: {
               'Is Paid': isPaid,
               'Subscription Tier': tier,
-              'Last Login': new Date().toISOString()
+              'Last Login': new Date().toISOString().split('T')[0] // Use YYYY-MM-DD format
             }
           }]
         })
@@ -217,22 +228,19 @@ export class AirtableBackend {
     console.log('📤 Starting image queue process...')
     
     try {
-      // Get next priority number for this user
-      console.log('🔢 Getting next priority for user:', userEmail)
-      const priority = await this.getNextPriority(userEmail)
-      console.log('📊 Next priority:', priority)
+      // Priority is no longer used since it's not in the field list
+      console.log('📤 Starting image queue process for user:', userEmail)
 
       // Prepare the payload - only include fields that exist in the Airtable table
+      const publishDate = imageData.publishDate || new Date().toISOString().split('T')[0]
+      
       const fields: Record<string, unknown> = {
-        'User Email': userEmail,
-        'Image URL': imageData.url,
-        'Upload Date': new Date().toISOString().split('T')[0], // Date-only format (YYYY-MM-DD)
-        'Priority': priority
-      }
-
-      // Add publish date if provided
-      if (imageData.publishDate) {
-        fields['Publish Date'] = imageData.publishDate
+        'User Email': userEmail, // Email field
+        'Image URL': imageData.url, // Link field
+        'Upload Date': new Date().toISOString().split('T')[0], // Date field (YYYY-MM-DD)
+        'Publish Date': publishDate // Date field (YYYY-MM-DD)
+        // "Publish Time" field removed - causing 422 error
+        // "Image Queue #" is auto-assigned by Airtable, not sent in payload
       }
 
       const payload = {
@@ -242,12 +250,12 @@ export class AirtableBackend {
       }
 
       console.log('📦 Payload being sent to Airtable:')
-      console.log('   Table: Image Queue')
+      console.log('   Table: Queue')
       console.log('   Fields:', JSON.stringify(payload.records[0].fields, null, 2))
       console.log('   Upload Date value:', payload.records[0].fields['Upload Date'])
       console.log('   Upload Date type:', typeof payload.records[0].fields['Upload Date'])
 
-      const response = await this.makeRequest('/Image Queue', {
+      const response = await this.makeRequest(`/${this.tableIds.queue}`, {
         method: 'POST',
         body: JSON.stringify(payload)
       })
@@ -267,7 +275,7 @@ export class AirtableBackend {
         status: 'queued' as const, // Default status since it's not stored in Airtable
         uploadDate: record.fields['Upload Date'] as string,
         publishDate: record.fields['Publish Date'] as string || imageData.publishDate,
-        priority: record.fields['Priority'] as number,
+        priority: 0, // Priority no longer used - set to default value
         notes: imageData.notes || '' // Use the original data since it's not stored in Airtable
       }
 
@@ -291,7 +299,7 @@ export class AirtableBackend {
 
   async getQueueStatus(userEmail: string): Promise<QueueItem[]> {
     try {
-      const response = await this.makeRequest(`/Image Queue?filterByFormula=${encodeURIComponent(`{User Email} = '${userEmail}'`)}&sort[0][field]=Priority&sort[0][direction]=asc`)
+      const response = await this.makeRequest(`/${this.tableIds.queue}?filterByFormula=${encodeURIComponent(`{User Email} = '${userEmail}'`)}`)
       
       return response.records.map((record: { id: string; fields: Record<string, unknown> }) => ({
         id: record.id,
@@ -302,7 +310,7 @@ export class AirtableBackend {
         status: 'queued' as const, // Default status since it's not stored in Airtable
         uploadDate: record.fields['Upload Date'] as string,
         publishDate: record.fields['Publish Date'] as string,
-        priority: record.fields['Priority'] as number,
+        priority: 0, // Priority no longer used
         notes: '' // Not stored in Airtable
       }))
     } catch (error) {
@@ -327,7 +335,7 @@ export class AirtableBackend {
         return true
       }
 
-      await this.makeRequest(`/Image Queue`, {
+      await this.makeRequest(`/${this.tableIds.queue}`, {
         method: 'PATCH',
         body: JSON.stringify({
           records: [{
@@ -346,9 +354,9 @@ export class AirtableBackend {
   async deleteQueueItem(recordId: string): Promise<boolean> {
     try {
       console.log('🔍 Deleting queue item with record ID:', recordId)
-      console.log('🔗 Making DELETE request to:', `/Image Queue?records[]=${recordId}`)
+      console.log('🔗 Making DELETE request to:', `/${this.tableIds.queue}?records[]=${recordId}`)
       
-      await this.makeRequest(`/Image Queue?records[]=${recordId}`, {
+      await this.makeRequest(`/${this.tableIds.queue}?records[]=${recordId}`, {
         method: 'DELETE'
       })
       
@@ -360,41 +368,7 @@ export class AirtableBackend {
     }
   }
 
-  async reorderQueue(userEmail: string, newOrder: string[]): Promise<boolean> {
-    try {
-      const updates = newOrder.map((recordId, index) => ({
-        id: recordId,
-        fields: { 'Priority': index + 1 }
-      }))
-
-      await this.makeRequest(`/Image Queue`, {
-        method: 'PATCH',
-        body: JSON.stringify({
-          records: updates
-        })
-      })
-      return true
-    } catch (error) {
-      console.error('Error reordering queue:', error)
-      return false
-    }
-  }
-
-  private async getNextPriority(userEmail: string): Promise<number> {
-    try {
-      const response = await this.makeRequest(`/Image Queue?filterByFormula=${encodeURIComponent(`{User Email} = '${userEmail}'`)}&sort[0][field]=Priority&sort[0][direction]=desc&maxRecords=1`)
-      
-      if (response.records.length === 0) {
-        return 1
-      }
-
-      const highestPriority = response.records[0].fields['Priority'] as number
-      return highestPriority + 1
-    } catch (error) {
-      console.error('Error getting next priority:', error)
-      return 1
-    }
-  }
+  // Priority-related methods removed since Priority is not in the field list
 
   // Get table schema to check field names
   async getTableSchema(tableName: string): Promise<{ name: string; fields: Array<{ name: string; type: string }> }> {
@@ -460,7 +434,7 @@ export async function findOrCreateUserByEmail(email: string) {
 
   console.log(`🔍 Searching for user with email: ${email}`);
 
-  const url = `https://api.airtable.com/v0/${baseId}/${tableName}?filterByFormula=${encodeURIComponent(`{Email} = '${email}'`)}`;
+  const url = `https://api.airtable.com/v0/${baseId}/tblXfgLJOJH94UGwD?filterByFormula=${encodeURIComponent(`{Email} = '${email}'`)}`;
 
   const getRes = await fetch(url, {
     headers: {

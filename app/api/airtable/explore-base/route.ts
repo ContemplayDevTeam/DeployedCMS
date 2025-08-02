@@ -29,12 +29,12 @@ export async function GET() {
         fieldCount: 6,
         fieldNames: ['Email', 'Is Verified', 'Is Paid', 'Subscription Tier', 'Created Date', 'Last Login']
       },
-      {
-        tableId: 'Image Queue',
-        tableName: 'Image Queue',
-        fieldCount: 5,
-        fieldNames: ['User Email', 'Image URL', 'Upload Date', 'Priority', 'Publish Date']
-      }
+             {
+         tableId: 'Queue',
+         tableName: 'Queue',
+         fieldCount: 5,
+         fieldNames: ['User Email', 'Image URL', 'Upload Date', 'Publish Date', 'Publish Time']
+       }
     ]
       
     return NextResponse.json({

@@ -85,33 +85,34 @@ export async function POST(request: NextRequest) {
       
       try {
         console.log(`📤 Queuing item ${i + 1}/${queueItems.length}:`, {
-          fileName: item.fileName,
-          fileSize: item.fileSize,
-          imageUrl: item.imageUrl
+          imageUrl: item['Image URL'],
+          uploadDate: item['Upload Date'],
+          publishDate: item['Publish Date']
+          // publishTime field removed to test if it's causing the 422 error
         })
 
         const queueItem = await airtable.queueImage(email, {
-          url: item.imageUrl,
-          name: item.fileName,
-          size: item.fileSize,
-          notes: item.notes || 'Uploaded via web interface',
-          publishDate: item.publishDate,
-          metadata: item.metadata
+          url: item['Image URL'],
+          name: 'Uploaded Image', // Default name since it's not in the payload
+          size: 0, // Default size since it's not in the payload
+          notes: 'Uploaded via web interface',
+          publishDate: item['Publish Date'],
+          metadata: {}
         })
 
         console.log(`✅ Item ${i + 1} queued successfully:`, queueItem.id)
         results.push({
-          originalId: item.id,
+          originalId: i.toString(),
           queueItemId: queueItem.id,
-          fileName: item.fileName,
+          fileName: 'Uploaded Image',
           status: 'success'
         })
 
       } catch (error) {
         console.error(`❌ Failed to queue item ${i + 1}:`, error)
         errors.push({
-          originalId: item.id,
-          fileName: item.fileName,
+          originalId: i.toString(),
+          fileName: 'Uploaded Image',
           error: error instanceof Error ? error.message : 'Unknown error',
           status: 'error'
         })

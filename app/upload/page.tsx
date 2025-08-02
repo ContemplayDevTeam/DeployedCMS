@@ -16,6 +16,19 @@ interface QueueItem {
   uploadError?: string // Error message if upload failed
 }
 
+interface AirtableQueueItem {
+  id: string
+  userEmail: string
+  imageUrl: string
+  fileName: string
+  fileSize: number
+  status: 'queued' | 'processing' | 'published' | 'failed'
+  uploadDate: string
+  publishDate?: string
+  notes?: string
+  priority: number
+}
+
 export default function Home() {
   const [email, setEmail] = useState<string>('')
   const [storedEmail, setStoredEmail] = useState<string>('')
@@ -27,7 +40,7 @@ export default function Home() {
   const [isSelectMode, setIsSelectMode] = useState<boolean>(false)
   const [draggedItem, setDraggedItem] = useState<string | null>(null)
   const [isProcessing, setIsProcessing] = useState<boolean>(false)
-  const [airtableQueueItems, setAirtableQueueItems] = useState<any[]>([])
+  const [airtableQueueItems, setAirtableQueueItems] = useState<AirtableQueueItem[]>([])
   const [isLoadingAirtableQueue, setIsLoadingAirtableQueue] = useState(false)
   const [showAirtableQueue, setShowAirtableQueue] = useState<boolean>(true)
   const [draggedAirtableItem, setDraggedAirtableItem] = useState<string | null>(null)
@@ -121,11 +134,8 @@ export default function Home() {
       const [movedItem] = newOrder.splice(fromIndex, 1)
       newOrder.splice(toIndex, 0, movedItem)
 
-      // Update priorities based on new order
-      const updatedItems = newOrder.map((item, index) => ({
-        ...item,
-        priority: index + 1
-      }))
+      // Update order (priority is no longer used)
+      const updatedItems = newOrder
 
       // Send reorder request
       const response = await fetch('/api/airtable/queue/reorder', {
@@ -175,6 +185,18 @@ export default function Home() {
   }
 
   const handleSaveEmail = () => {
+    // Clear any existing local queue when a new user signs in
+    setQueue(prev => {
+      // Clean up all local preview URLs
+      prev.forEach(item => {
+        if (item.localPreview && item.localPreview.startsWith('blob:')) {
+          URL.revokeObjectURL(item.localPreview)
+        }
+      })
+      return []
+    })
+    setStatus('')
+    
     localStorage.setItem('uploader_email', email)
     localStorage.setItem('uploader_action', 'login')
     localStorage.setItem('uploader_timestamp', new Date().toISOString())
@@ -184,6 +206,30 @@ export default function Home() {
   }
 
   const handleLogout = () => {
+    // Check if there are items in local queue that haven't been processed
+    if (queue.length > 0) {
+      const hasUnprocessedItems = queue.some(item => item.status === 'pending' || item.status === 'uploading')
+      if (hasUnprocessedItems) {
+        const confirmed = confirm('You have unprocessed images in your local queue. Are you sure you want to sign out? Your unprocessed images will be lost.')
+        if (!confirmed) {
+          return
+        }
+      }
+    }
+
+    // Clear local queue when user signs out
+    setQueue(prev => {
+      // Clean up all local preview URLs
+      prev.forEach(item => {
+        if (item.localPreview && item.localPreview.startsWith('blob:')) {
+          URL.revokeObjectURL(item.localPreview)
+        }
+      })
+      return []
+    })
+    setStatus('')
+    
+    // Clear localStorage
     localStorage.removeItem('uploader_email')
     localStorage.removeItem('uploader_action')
     localStorage.removeItem('uploader_timestamp')
@@ -227,24 +273,45 @@ export default function Home() {
   }
 
   const uploadToCloudinary = async (item: QueueItem): Promise<string> => {
+    console.log('📤 Starting Cloudinary upload for:', item.file.name)
+    console.log('📁 File details:', {
+      name: item.file.name,
+      size: item.file.size,
+      type: item.file.type
+    })
+    
     const formData = new FormData()
     formData.append('file', item.file)
+    
+    console.log('📋 FormData created, making request to /api/upload...')
     
     const uploadResponse = await fetch('/api/upload', {
       method: 'POST',
       body: formData
     })
 
+    console.log('📡 Upload response status:', uploadResponse.status)
+    console.log('📡 Upload response ok:', uploadResponse.ok)
+
     if (!uploadResponse.ok) {
-      throw new Error(`Failed to upload ${item.file.name} to Cloudinary`)
+      const errorText = await uploadResponse.text()
+      console.error('❌ Upload failed with status:', uploadResponse.status)
+      console.error('❌ Error response:', errorText)
+      throw new Error(`Failed to upload ${item.file.name} to Cloudinary: ${uploadResponse.status} ${uploadResponse.statusText}`)
     }
 
     const uploadResult = await uploadResponse.json()
+    console.log('✅ Upload result:', uploadResult)
     return uploadResult.imageUrl
   }
 
   const processQueue = async () => {
+    console.log('🚀 Starting process queue...')
+    console.log('📧 Stored email:', storedEmail)
+    console.log('📦 Queue length:', queue.length)
+    
     if (!storedEmail || queue.length === 0) {
+      console.log('❌ No email or queue items')
       alert('No items in queue to process')
       return
     }
@@ -255,8 +322,10 @@ export default function Home() {
     try {
       // First, upload all pending items to Cloudinary
       const itemsToProcess = queue.filter(item => item.status === 'pending')
+      console.log('📤 Items to process:', itemsToProcess.length)
       
       if (itemsToProcess.length === 0) {
+        console.log('❌ No pending items to process')
         setStatus('No pending items to process')
         setIsProcessing(false)
         return
@@ -264,9 +333,13 @@ export default function Home() {
 
       setStatus(`Uploading ${itemsToProcess.length} images to Cloudinary...`)
 
+      // Track completed uploads
+      const completedUploads: Array<{ item: QueueItem; cloudinaryUrl: string }> = []
+
       // Upload each item to Cloudinary
       for (let i = 0; i < itemsToProcess.length; i++) {
         const item = itemsToProcess[i]
+        console.log(`📤 Processing item ${i + 1}/${itemsToProcess.length}:`, item.file.name)
         
         // Update status to uploading
         setQueue(prev => prev.map(queueItem => 
@@ -276,16 +349,29 @@ export default function Home() {
         ))
 
         try {
+          console.log(`☁️ Uploading ${item.file.name} to Cloudinary...`)
           const cloudinaryUrl = await uploadToCloudinary(item)
+          console.log(`✅ Successfully uploaded ${item.file.name}:`, cloudinaryUrl)
+          
+          // Track successful upload
+          completedUploads.push({ item, cloudinaryUrl })
           
           // Update item with Cloudinary URL
-          setQueue(prev => prev.map(queueItem => 
-            queueItem.id === item.id 
-              ? { ...queueItem, status: 'completed' as const, cloudinaryUrl }
-              : queueItem
-          ))
+          setQueue(prev => {
+            console.log('🔄 Updating queue state...')
+            console.log('📦 Current queue items:', prev.map(q => ({ id: q.id, status: q.status, hasCloudinaryUrl: !!q.cloudinaryUrl })))
+            
+            const updatedQueue = prev.map(queueItem => 
+              queueItem.id === item.id 
+                ? { ...queueItem, status: 'completed' as const, cloudinaryUrl }
+                : queueItem
+            )
+            
+            console.log('📦 Updated queue items:', updatedQueue.map(q => ({ id: q.id, status: q.status, hasCloudinaryUrl: !!q.cloudinaryUrl })))
+            return updatedQueue
+          })
         } catch (error) {
-          console.error(`Failed to upload ${item.file.name}:`, error)
+          console.error(`❌ Failed to upload ${item.file.name}:`, error)
           
           // Update item with error
           setQueue(prev => prev.map(queueItem => 
@@ -301,30 +387,35 @@ export default function Home() {
       }
 
       // Now send all successfully uploaded items to Airtable
-      const completedItems = queue.filter(item => item.status === 'completed' && item.cloudinaryUrl)
+      console.log('🔍 Checking completed uploads...')
+      console.log('📊 Completed uploads count:', completedUploads.length)
       
-      if (completedItems.length === 0) {
+      if (completedUploads.length === 0) {
+        console.log('❌ No completed uploads to send to Airtable')
         setStatus('No items successfully uploaded to process')
         setIsProcessing(false)
         return
       }
 
-      setStatus(`Sending ${completedItems.length} items to Airtable queue...`)
+      setStatus(`Sending ${completedUploads.length} items to Airtable queue...`)
+      console.log('📤 Preparing to send items to Airtable...')
 
-      const queueItemsForAirtable = completedItems.map(item => ({
-        id: item.id,
-        file: item.file,
-        imageUrl: item.cloudinaryUrl!,
-        fileName: item.file.name,
-        fileSize: item.file.size,
-        notes: 'Uploaded via web interface',
-        publishDate: new Date().toISOString().split('T')[0], // Today's date
-        metadata: {
-          uploadDate: new Date().toISOString(),
-          originalFileName: item.file.name,
-          fileType: item.file.type
-        }
+      // Build sanitized payload for Airtable using only fields that exist in the table
+      const publishDate = new Date().toISOString().split('T')[0]
+      
+      const queueItemsForAirtable = completedUploads.map(({ item, cloudinaryUrl }, index) => ({
+        // Use exact Airtable field names with proper casing and types
+        "User Email": storedEmail, // Email field
+        "Image URL": cloudinaryUrl, // Link field
+        "Upload Date": new Date().toISOString().split('T')[0], // Date field (YYYY-MM-DD)
+        "Publish Date": publishDate // Date field (YYYY-MM-DD)
+        // "Publish Time" field removed - causing 422 error
+        // "Image Queue #" is auto-assigned by Airtable, not sent in payload
       }))
+
+      console.log('📋 Queue items for Airtable:', queueItemsForAirtable)
+      console.log('📧 Sending to email:', storedEmail)
+      console.log('🧪 Final Payload to Airtable:', JSON.stringify(queueItemsForAirtable, null, 2))
 
       const bulkResponse = await fetch('/api/airtable/queue/bulk-add', {
         method: 'POST',
@@ -335,15 +426,28 @@ export default function Home() {
         })
       })
 
+      console.log('📡 Airtable bulk response status:', bulkResponse.status)
+      console.log('📡 Airtable bulk response ok:', bulkResponse.ok)
+
       if (!bulkResponse.ok) {
-        throw new Error('Failed to send items to Airtable queue')
+        const errorText = await bulkResponse.text()
+        console.error('❌ Airtable bulk add failed:', errorText)
+        throw new Error(`Failed to send items to Airtable queue: ${bulkResponse.status} ${bulkResponse.statusText}`)
       }
 
       const bulkResult = await bulkResponse.json()
+      console.log('✅ Airtable bulk result:', bulkResult)
       
       if (bulkResult.errors && bulkResult.errors.length > 0) {
+        console.error("🔍 Airtable item errors:", JSON.stringify(bulkResult.errors, null, 2))
         console.warn('Some items failed to queue:', bulkResult.errors)
-        setStatus(`Processed ${bulkResult.summary.successful} items, ${bulkResult.summary.failed} failed`)
+        
+        // Show specific error details to user
+        const errorDetails = bulkResult.errors.map((error: any, index: number) => 
+          `Item ${index + 1}: ${error.message || 'Unknown error'}`
+        ).join(', ')
+        
+        setStatus(`Processed ${bulkResult.summary.successful} items, ${bulkResult.summary.failed} failed. Errors: ${errorDetails}`)
       } else {
         setStatus(`Successfully processed ${bulkResult.summary.successful} items`)
       }
@@ -523,8 +627,9 @@ export default function Home() {
               {storedEmail && (
                 <button
                   onClick={handleLogout}
-                  className="px-3 py-2 text-sm rounded-lg transition-colors"
-                  style={{ color: '#D0DADA', backgroundColor: '#4A5555' }}
+                  className="px-4 py-2 text-sm font-medium rounded-lg transition-all hover:shadow-sm"
+                  style={{ color: '#FFFFFF', backgroundColor: '#991B1B' }}
+                  title="Sign out of your account"
                 >
                   Sign Out
                 </button>
@@ -575,85 +680,36 @@ export default function Home() {
                 <div className="p-2 border-b" style={{ borderColor: '#4A5555', backgroundColor: '#8FA8A8' }}>
                   <div className="flex justify-between items-center">
                     <h3 className="text-sm font-semibold" style={{ color: '#4A5555' }}>Local Queue</h3>
-                    <div className="flex space-x-1">
-                      <button
-                        onClick={() => setShowQueue(false)}
-                        className="p-1 transition-colors"
-                        style={{ color: '#4A5555' }}
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
-                    </div>
+                    <button
+                      onClick={() => setShowQueue(false)}
+                      className="p-1 transition-colors"
+                      style={{ color: '#4A5555' }}
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
                   </div>
-                  <p className="text-xs mt-1" style={{ color: '#4A5555' }}>
-                    {queue.length} file{queue.length !== 1 ? 's' : ''} in queue
-                    {pendingCount > 0 && ` • ${pendingCount} pending`}
-                    {completedCount > 0 && ` • ${completedCount} ready`}
-                    {errorCount > 0 && ` • ${errorCount} failed`}
-                  </p>
                   
                   {/* Process and Clear Queue Buttons */}
                   {queue.length > 0 && (
-                    <div className="flex space-x-2 mt-3">
+                    <div className="flex space-x-1 mt-2">
                       <button
                         onClick={clearQueue}
                         disabled={isProcessing}
-                        className="flex-1 px-2 py-1 text-xs text-gray-600 hover:text-gray-800 hover:bg-gray-200 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        style={{ backgroundColor: '#D0DADA' }}
+                        className="flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-sm"
+                        style={{ backgroundColor: '#F3F4F6', color: '#6B7280', border: '1px solid #E5E7EB' }}
                       >
-                        Clear Queue
+                        Clear
                       </button>
                       <button
                         onClick={processQueue}
                         disabled={isProcessing || pendingCount === 0}
-                        className="flex-1 px-2 py-1 text-xs rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        style={{ backgroundColor: '#4A5555', color: '#D0DADA' }}
+                        className="flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-sm"
+                        style={{ backgroundColor: '#8FA8A8', color: '#FFFFFF' }}
                       >
-                        {isProcessing ? 'Processing...' : 'Process Queue'}
+                        {isProcessing ? 'Processing...' : 'Process'}
                       </button>
-                    </div>
-                  )}
-                  
-                  {/* Selection controls */}
-                  {queue.length > 0 && (
-                    <div className="flex items-center justify-between mt-2">
-                      <button
-                        onClick={toggleSelectMode}
-                        className={`text-xs px-2 py-1 rounded transition-colors ${
-                          isSelectMode 
-                            ? 'bg-red-100 text-red-700' 
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                        }`}
-                      >
-                        {isSelectMode ? 'Cancel' : 'Select'}
-                      </button>
-                      
-                      {isSelectMode && (
-                        <div className="flex items-center space-x-2">
-                          <button
-                            onClick={selectAll}
-                            className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors"
-                          >
-                            All
-                          </button>
-                          <button
-                            onClick={deselectAll}
-                            className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors"
-                          >
-                            None
-                          </button>
-                          {selectedCount > 0 && (
-                            <button
-                              onClick={removeSelectedFromQueue}
-                              className="text-xs px-2 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors"
-                            >
-                              Delete ({selectedCount})
-                            </button>
-                          )}
-                        </div>
-                      )}
                     </div>
                   )}
                 </div>
@@ -719,8 +775,11 @@ export default function Home() {
                                     item.status === 'completed' ? 'bg-green-100 text-green-800' :
                                     'bg-red-100 text-red-800'
                                   }`}>
-                                    {item.status}
+                                    {item.status === 'completed' ? 'Ready' : item.status}
                                   </span>
+                                  {item.cloudinaryUrl && (
+                                    <span className="text-xs text-green-600">✓ Cloudinary</span>
+                                  )}
                                 </div>
                               </div>
 
@@ -875,7 +934,7 @@ export default function Home() {
                       </div>
                     ) : airtableQueueItems.length > 0 ? (
                       <div className="p-6">
-                        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div className="grid md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-2">
                           {airtableQueueItems.map((item, index) => (
                             <div 
                               key={item.id} 
@@ -883,11 +942,11 @@ export default function Home() {
                               onDragStart={(e) => handleAirtableDragStart(e, item.id)}
                               onDragOver={handleAirtableDragOver}
                               onDrop={(e) => handleAirtableDrop(e, item.id)}
-                              className={`bg-gray-50 rounded-lg p-4 border border-gray-200 hover:border-gray-300 transition-all cursor-move ${
+                              className={`bg-gray-50 rounded-lg p-2 border border-gray-200 hover:border-gray-300 transition-all cursor-move ${
                                 draggedAirtableItem === item.id ? 'opacity-50' : ''
                               }`}
                             >
-                              <div className="aspect-square relative overflow-hidden rounded-lg mb-3">
+                              <div className="aspect-square relative overflow-hidden rounded mb-1">
                                 <img
                                   src={item.imageUrl}
                                   alt={item.fileName || 'Image'}
@@ -898,32 +957,22 @@ export default function Home() {
                                   }}
                                 />
                               </div>
-                              <div className="flex items-center justify-between mb-2">
-                                <h3 className="font-semibold text-sm truncate" style={{ color: '#4A5555' }}>
-                                  {item.fileName || 'Image'}
-                                </h3>
+                              <div className="flex items-center justify-between mb-1">
                                 <span className="text-xs px-2 py-1 rounded-full" style={{ 
                                   backgroundColor: item.status === 'published' ? '#10B981' : 
                                                   item.status === 'processing' ? '#F59E0B' : 
                                                   item.status === 'failed' ? '#EF4444' : '#6B7280',
                                   color: '#FFFFFF'
                                 }}>
-                                  {item.status || 'queued'}
+                                  {item.status === 'queued' ? `Queued` : item.status}
                                 </span>
                               </div>
-                              <div className="text-xs mb-3" style={{ color: '#6B7280' }}>
-                                <div className="flex items-center justify-between mb-1">
-                                  <span>Priority: {item.priority}</span>
-                                  <span className="text-xs text-gray-400">#{index + 1}</span>
-                                </div>
+                              <div className="text-xs mb-1" style={{ color: '#6B7280' }}>
                                 <p>Uploaded: {new Date(item.uploadDate).toLocaleDateString()}</p>
-                                {item.publishDate && (
-                                  <p>Published: {new Date(item.publishDate).toLocaleDateString()}</p>
-                                )}
                               </div>
                               <button
                                 onClick={() => deleteAirtableQueueItem(item.id)}
-                                className="w-full px-3 py-2 text-xs font-medium rounded-lg transition-colors"
+                                className="w-full px-1 py-0.5 text-xs font-medium rounded transition-colors"
                                 style={{ backgroundColor: '#EF4444', color: '#FFFFFF' }}
                               >
                                 Delete
@@ -949,14 +998,32 @@ export default function Home() {
             </div>
           </>
         ) : (
-          <div className="text-center">
-            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
+          <div className="flex-1 flex flex-col items-center justify-center p-8">
+            <div className="text-center max-w-md">
+              <div className="bg-white rounded-xl shadow-sm border p-6" style={{ borderColor: '#E5E7EB' }}>
+                <h3 className="text-lg font-semibold mb-4" style={{ color: '#4A5555' }}>Sign In</h3>
+                <div className="flex items-center space-x-3 mb-4">
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="Enter your email address"
+                    className="flex-1 px-4 py-3 border rounded-lg focus:ring-2 focus:border-transparent transition-all"
+                    style={{ borderColor: '#D1D5DB', backgroundColor: '#FFFFFF', color: '#4A5555' }}
+                  />
+                  <button
+                    onClick={handleSaveEmail}
+                    className="px-6 py-3 font-medium rounded-lg transition-all hover:shadow-sm"
+                    style={{ backgroundColor: '#8FA8A8', color: '#FFFFFF' }}
+                  >
+                    Continue
+                  </button>
+                </div>
+                <p className="text-sm" style={{ color: '#6B7280' }}>
+                  Don't have an account? Just enter your email to get started.
+                </p>
+              </div>
             </div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">Please sign in to continue</h2>
-            <p className="text-gray-600">Enter your email address to access the upload portal</p>
           </div>
         )}
       </main>

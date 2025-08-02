@@ -71,12 +71,12 @@ export async function GET() {
       console.error('❌ Users table error:', error)
     }
 
-    // Test 3: Check Image Queue table
-    console.log('📋 Testing Image Queue table...')
+    // Test 3: Check Queue table
+    console.log('📋 Testing Queue table...')
     let queueTest = null
     let queueSchema = null
     try {
-      const response = await fetch(`https://api.airtable.com/v0/${baseId}/Image Queue?maxRecords=1`, {
+      const response = await fetch(`https://api.airtable.com/v0/${baseId}/Queue?maxRecords=1`, {
         headers: {
           'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json'
@@ -85,20 +85,20 @@ export async function GET() {
       
       if (response.ok) {
         queueTest = await response.json()
-        console.log('✅ Image Queue table accessible')
+        console.log('✅ Queue table accessible')
         
         // Get table schema
         try {
-          queueSchema = await airtable.getTableSchema('Image Queue')
+          queueSchema = await airtable.getTableSchema('Queue')
         } catch (schemaError) {
           console.error('❌ Could not get table schema:', schemaError)
         }
       } else {
         const errorText = await response.text()
-        console.error('❌ Image Queue table error:', response.status, errorText)
+        console.error('❌ Queue table error:', response.status, errorText)
       }
     } catch (error) {
-      console.error('❌ Image Queue table error:', error)
+              console.error('❌ Queue table error:', error)
     }
 
     return NextResponse.json({

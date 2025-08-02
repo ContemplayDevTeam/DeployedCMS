@@ -21,7 +21,7 @@ export async function GET() {
       message: 'Airtable connection successful!',
       baseId,
       recordsFound: records.length,
-      tables: ['Users', 'Image Queue'],
+      tables: ['Users', 'Queue'],
       connectionTest: 'Passed'
     })
     

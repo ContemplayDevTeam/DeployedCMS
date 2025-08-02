@@ -23,7 +23,7 @@ export async function GET() {
     // Try to get all tables in the base
     try {
       // This is a workaround to get table names - we'll try common table names
-      const commonTableNames = ['Users', 'Image Queue', 'Queue', 'Images', 'User', 'Queue Items']
+      const commonTableNames = ['Users', 'Queue', 'Images', 'User', 'Queue Items']
       const results = []
       
       for (const tableName of commonTableNames) {

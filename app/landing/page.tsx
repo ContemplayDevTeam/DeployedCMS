@@ -6,25 +6,12 @@ import Link from 'next/link'
 
 
 
-interface QueueItem {
-  id: string
-  userEmail: string
-  imageUrl: string
-  fileName: string
-  fileSize: number
-  status: 'queued' | 'processing' | 'published' | 'failed'
-  uploadDate: string
-  publishDate?: string
-  notes?: string
-  priority: number
-}
+
 
 export default function Landing() {
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [queueItems, setQueueItems] = useState<QueueItem[]>([])
-  const [isLoadingQueue, setIsLoadingQueue] = useState(false)
 
   const handleContinue = async (action: 'login' | 'signup') => {
     if (!email.trim()) return
