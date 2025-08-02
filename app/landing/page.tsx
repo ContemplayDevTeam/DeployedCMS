@@ -4,10 +4,27 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
+
+
+interface QueueItem {
+  id: string
+  userEmail: string
+  imageUrl: string
+  fileName: string
+  fileSize: number
+  status: 'queued' | 'processing' | 'published' | 'failed'
+  uploadDate: string
+  publishDate?: string
+  notes?: string
+  priority: number
+}
+
 export default function Landing() {
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [queueItems, setQueueItems] = useState<QueueItem[]>([])
+  const [isLoadingQueue, setIsLoadingQueue] = useState(false)
 
   const handleContinue = async (action: 'login' | 'signup') => {
     if (!email.trim()) return
@@ -39,19 +56,18 @@ export default function Landing() {
     }
   }, [])
 
+
+
   const features = [
     {
-      icon: "📤",
       title: "Easy Upload",
       description: "Simply drag and drop your product images to our queue."
     },
     {
-      icon: "⚡",
       title: "Quick Publishing",
-      description: "We&apos;ll publish your content professionally and efficiently."
+      description: "We'll publish your content professionally and efficiently."
     },
     {
-      icon: "📋",
       title: "Queue Management",
       description: "Track the status of your uploads in our organized queue."
     }
@@ -77,22 +93,36 @@ export default function Landing() {
                                <span className="italic" style={{ color: '#FFFFFF' }}>What will you create today?</span>
              </div>
            </div>
-          <div className="flex items-center space-x-4">
-            <Link 
-              href="/login" 
-              className="hidden sm:inline-flex items-center px-4 py-2 text-sm font-medium transition-colors"
-              style={{ color: '#D0DADA' }}
-            >
-              Sign In
-            </Link>
-            <Link 
-              href="/signup" 
-              className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-colors"
-              style={{ color: '#D0DADA', backgroundColor: '#4A5555' }}
-            >
-              Get Started
-            </Link>
-          </div>
+                                           <div className="flex items-center space-x-4">
+              {email ? (
+                <>
+                  <Link 
+                    href="/upload" 
+                    className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-colors"
+                    style={{ color: '#D0DADA', backgroundColor: '#4A5555' }}
+                  >
+                    Upload
+                  </Link>
+                </>
+              ) : (
+               <>
+                 <Link 
+                   href="/login" 
+                   className="hidden sm:inline-flex items-center px-4 py-2 text-sm font-medium transition-colors"
+                   style={{ color: '#D0DADA' }}
+                 >
+                   Sign In
+                 </Link>
+                 <Link 
+                   href="/signup" 
+                   className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-colors"
+                   style={{ color: '#D0DADA', backgroundColor: '#4A5555' }}
+                 >
+                   Get Started
+                 </Link>
+               </>
+             )}
+           </div>
         </div>
       </header>
 
@@ -165,19 +195,20 @@ export default function Landing() {
              </p>
            </div>
 
-          <div className="grid md:grid-cols-3 gap-8">
+                     <div className="grid md:grid-cols-3 gap-8">
                          {features.map((feature, index) => (
                <div key={index} className="p-8 rounded-2xl shadow-sm card-hover" style={{ backgroundColor: '#D0DADA' }}>
-                 <div className="text-4xl mb-4">{feature.icon}</div>
                  <h3 className="text-xl font-semibold mb-3" style={{ color: '#4A5555' }}>{feature.title}</h3>
                  <p className="leading-relaxed" style={{ color: '#4A5555' }}>{feature.description}</p>
                </div>
              ))}
           </div>
         </div>
-      </section>
+             </section>
 
-      {/* CTA Section */}
+       
+
+       {/* CTA Section */}
       <section className="py-20" style={{ backgroundColor: '#4A5555' }}>
         <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
                      <h2 className="text-3xl sm:text-4xl font-bold mb-4" style={{ color: '#D0DADA' }}>
@@ -194,8 +225,12 @@ export default function Landing() {
              >
                Start Uploading Now
              </button>
-             <button className="px-8 py-4 border-2 font-semibold rounded-lg transition-colors btn-hover" style={{ borderColor: '#D0DADA', color: '#D0DADA' }}>
-               View Demo
+             <button 
+               onClick={() => router.push('/signup')}
+               className="px-8 py-4 border-2 font-semibold rounded-lg transition-colors btn-hover" 
+               style={{ borderColor: '#D0DADA', color: '#D0DADA' }}
+             >
+               Sign Up
              </button>
            </div>
         </div>

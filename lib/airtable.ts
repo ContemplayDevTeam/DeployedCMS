@@ -345,12 +345,17 @@ export class AirtableBackend {
 
   async deleteQueueItem(recordId: string): Promise<boolean> {
     try {
+      console.log('🔍 Deleting queue item with record ID:', recordId)
+      console.log('🔗 Making DELETE request to:', `/Image Queue?records[]=${recordId}`)
+      
       await this.makeRequest(`/Image Queue?records[]=${recordId}`, {
         method: 'DELETE'
       })
+      
+      console.log('✅ Successfully deleted queue item:', recordId)
       return true
     } catch (error) {
-      console.error('Error deleting queue item:', error)
+      console.error('❌ Error deleting queue item:', recordId, error)
       return false
     }
   }

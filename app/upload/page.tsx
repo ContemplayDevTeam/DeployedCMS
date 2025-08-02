@@ -27,6 +27,11 @@ export default function Home() {
   const [isSelectMode, setIsSelectMode] = useState<boolean>(false)
   const [draggedItem, setDraggedItem] = useState<string | null>(null)
   const [isProcessing, setIsProcessing] = useState<boolean>(false)
+  const [airtableQueueItems, setAirtableQueueItems] = useState<any[]>([])
+  const [isLoadingAirtableQueue, setIsLoadingAirtableQueue] = useState(false)
+  const [showAirtableQueue, setShowAirtableQueue] = useState<boolean>(true)
+  const [draggedAirtableItem, setDraggedAirtableItem] = useState<string | null>(null)
+  const [isReorderingAirtable, setIsReorderingAirtable] = useState(false)
   const mainRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -44,6 +49,130 @@ export default function Home() {
       setLastLogin(date.toLocaleDateString() + ' ' + date.toLocaleTimeString())
     }
   }, [])
+
+  // Fetch Airtable queue items when user is logged in
+  useEffect(() => {
+    if (storedEmail) {
+      fetchAirtableQueueItems()
+    }
+  }, [storedEmail])
+
+  const fetchAirtableQueueItems = async () => {
+    if (!storedEmail) return
+    
+    setIsLoadingAirtableQueue(true)
+    try {
+      const response = await fetch('/api/airtable/queue/status', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email: storedEmail }),
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setAirtableQueueItems(data.queueItems || [])
+      } else {
+        console.error('Failed to fetch Airtable queue items')
+      }
+    } catch (error) {
+      console.error('Error fetching Airtable queue items:', error)
+    } finally {
+      setIsLoadingAirtableQueue(false)
+    }
+  }
+
+  const deleteAirtableQueueItem = async (itemId: string) => {
+    try {
+      console.log('🗑️ Attempting to delete Airtable queue item:', itemId)
+      
+      const response = await fetch('/api/airtable/queue/delete', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ recordId: itemId }),
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        console.log('✅ Successfully deleted Airtable queue item:', itemId, result)
+        // Remove item from local state
+        setAirtableQueueItems(prev => prev.filter(item => item.id !== itemId))
+      } else {
+        const errorData = await response.json().catch(() => ({}))
+        console.error('❌ Failed to delete Airtable queue item:', response.status, errorData)
+        alert(`Failed to delete item: ${errorData.error || 'Unknown error'}`)
+      }
+    } catch (error) {
+      console.error('❌ Error deleting Airtable queue item:', error)
+      alert('Network error while deleting item')
+    }
+  }
+
+  const moveAirtableItem = async (fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex) return
+
+    setIsReorderingAirtable(true)
+    try {
+      // Create new order array
+      const newOrder = [...airtableQueueItems]
+      const [movedItem] = newOrder.splice(fromIndex, 1)
+      newOrder.splice(toIndex, 0, movedItem)
+
+      // Update priorities based on new order
+      const updatedItems = newOrder.map((item, index) => ({
+        ...item,
+        priority: index + 1
+      }))
+
+      // Send reorder request
+      const response = await fetch('/api/airtable/queue/reorder', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          userEmail: storedEmail,
+          newOrder: updatedItems.map(item => item.id)
+        }),
+      })
+
+      if (response.ok) {
+        setAirtableQueueItems(updatedItems)
+      } else {
+        console.error('Failed to reorder Airtable queue items')
+      }
+    } catch (error) {
+      console.error('Error reordering Airtable queue items:', error)
+    } finally {
+      setIsReorderingAirtable(false)
+    }
+  }
+
+  const handleAirtableDragStart = (e: React.DragEvent, id: string) => {
+    setDraggedAirtableItem(id)
+    e.dataTransfer.effectAllowed = 'move'
+  }
+
+  const handleAirtableDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+  }
+
+  const handleAirtableDrop = (e: React.DragEvent, targetId: string) => {
+    e.preventDefault()
+    if (!draggedAirtableItem || draggedAirtableItem === targetId) return
+
+    const draggedIndex = airtableQueueItems.findIndex(item => item.id === draggedAirtableItem)
+    const targetIndex = airtableQueueItems.findIndex(item => item.id === targetId)
+    
+    if (draggedIndex !== -1 && targetIndex !== -1) {
+      moveAirtableItem(draggedIndex, targetIndex)
+    }
+    setDraggedAirtableItem(null)
+  }
 
   const handleSaveEmail = () => {
     localStorage.setItem('uploader_email', email)
@@ -221,6 +350,9 @@ export default function Home() {
 
       // Clear the local queue after successful processing
       setQueue([])
+      
+      // Refresh the Airtable queue to show the newly added items
+      await fetchAirtableQueueItems()
       
     } catch (error) {
       console.error('Error processing queue:', error)
@@ -434,7 +566,7 @@ export default function Home() {
       >
         {storedEmail ? (
           <>
-            {/* Queue Sidebar */}
+            {/* Local Queue Sidebar */}
             <div className={`shadow-lg border-r transition-all duration-300 z-30 ${
               showQueue ? 'w-80 min-w-80' : 'w-0'
             } overflow-hidden`} style={{ backgroundColor: '#D0DADA', borderColor: '#4A5555' }}>
@@ -461,6 +593,28 @@ export default function Home() {
                     {completedCount > 0 && ` • ${completedCount} ready`}
                     {errorCount > 0 && ` • ${errorCount} failed`}
                   </p>
+                  
+                  {/* Process and Clear Queue Buttons */}
+                  {queue.length > 0 && (
+                    <div className="flex space-x-2 mt-3">
+                      <button
+                        onClick={clearQueue}
+                        disabled={isProcessing}
+                        className="flex-1 px-2 py-1 text-xs text-gray-600 hover:text-gray-800 hover:bg-gray-200 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        style={{ backgroundColor: '#D0DADA' }}
+                      >
+                        Clear Queue
+                      </button>
+                      <button
+                        onClick={processQueue}
+                        disabled={isProcessing || pendingCount === 0}
+                        className="flex-1 px-2 py-1 text-xs rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        style={{ backgroundColor: '#4A5555', color: '#D0DADA' }}
+                      >
+                        {isProcessing ? 'Processing...' : 'Process Queue'}
+                      </button>
+                    </div>
+                  )}
                   
                   {/* Selection controls */}
                   {queue.length > 0 && (
@@ -650,36 +804,12 @@ export default function Home() {
                   )}
                 </div>
 
-                {/* Queue Footer */}
-                <div className="p-4 border-t border-gray-200 bg-gray-50">
-                  <div className="flex space-x-2">
-                    <button
-                      onClick={clearQueue}
-                      disabled={queue.length === 0 || isProcessing}
-                      className="flex-1 px-3 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Clear Queue
-                    </button>
-                    <button
-                      onClick={processQueue}
-                      disabled={queue.length === 0 || isProcessing || pendingCount === 0}
-                      className="flex-1 px-3 py-2 text-sm rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      style={{ backgroundColor: '#4A5555', color: '#D0DADA' }}
-                    >
-                      {isProcessing ? 'Processing...' : 'Process Queue'}
-                    </button>
-                  </div>
-                  {pendingCount > 0 && (
-                    <p className="text-xs text-gray-500 mt-2 text-center">
-                      {pendingCount} item{pendingCount !== 1 ? 's' : ''} ready to process
-                    </p>
-                  )}
-                </div>
+
               </div>
             </div>
 
             {/* Main Upload Area */}
-            <div className="flex-1 flex flex-col items-center justify-center p-6" style={{ backgroundColor: '#FFFFFF' }}>
+            <div className="flex-1 flex flex-col p-6" style={{ backgroundColor: '#FFFFFF' }}>
               <div className="text-center mb-12">
                 <div className="inline-flex items-center justify-center w-16 h-16 rounded-full mb-6" style={{ backgroundColor: '#4A5555' }}>
                   <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: '#D0DADA' }}>
@@ -719,6 +849,103 @@ export default function Home() {
                   <p className="text-gray-600">{status}</p>
                 </div>
               )}
+
+              {/* Airtable Queue Section */}
+              <div className="mt-12">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-2xl font-bold" style={{ color: '#4A5555' }}>Your Queued Images</h2>
+                  <button
+                    onClick={() => setShowAirtableQueue(!showAirtableQueue)}
+                    className="flex items-center space-x-2 px-3 py-2 text-sm rounded-lg transition-colors"
+                    style={{ backgroundColor: '#8FA8A8', color: '#4A5555' }}
+                  >
+                    <span>{showAirtableQueue ? 'Hide' : 'Show'}</span>
+                    <svg className={`w-4 h-4 transition-transform ${showAirtableQueue ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                </div>
+
+                {showAirtableQueue && (
+                  <div className="bg-white rounded-xl shadow-sm border" style={{ borderColor: '#E5E7EB' }}>
+                    {isLoadingAirtableQueue ? (
+                      <div className="p-8 text-center">
+                        <div className="w-8 h-8 border-2 border-transparent rounded-full spinner mx-auto" style={{ borderColor: '#8FA8A8', borderTopColor: 'transparent' }}></div>
+                        <p className="mt-4" style={{ color: '#6B7280' }}>Loading your queue...</p>
+                      </div>
+                    ) : airtableQueueItems.length > 0 ? (
+                      <div className="p-6">
+                        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {airtableQueueItems.map((item, index) => (
+                            <div 
+                              key={item.id} 
+                              draggable={!isReorderingAirtable}
+                              onDragStart={(e) => handleAirtableDragStart(e, item.id)}
+                              onDragOver={handleAirtableDragOver}
+                              onDrop={(e) => handleAirtableDrop(e, item.id)}
+                              className={`bg-gray-50 rounded-lg p-4 border border-gray-200 hover:border-gray-300 transition-all cursor-move ${
+                                draggedAirtableItem === item.id ? 'opacity-50' : ''
+                              }`}
+                            >
+                              <div className="aspect-square relative overflow-hidden rounded-lg mb-3">
+                                <img
+                                  src={item.imageUrl}
+                                  alt={item.fileName || 'Image'}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement
+                                    target.style.display = 'none'
+                                  }}
+                                />
+                              </div>
+                              <div className="flex items-center justify-between mb-2">
+                                <h3 className="font-semibold text-sm truncate" style={{ color: '#4A5555' }}>
+                                  {item.fileName || 'Image'}
+                                </h3>
+                                <span className="text-xs px-2 py-1 rounded-full" style={{ 
+                                  backgroundColor: item.status === 'published' ? '#10B981' : 
+                                                  item.status === 'processing' ? '#F59E0B' : 
+                                                  item.status === 'failed' ? '#EF4444' : '#6B7280',
+                                  color: '#FFFFFF'
+                                }}>
+                                  {item.status || 'queued'}
+                                </span>
+                              </div>
+                              <div className="text-xs mb-3" style={{ color: '#6B7280' }}>
+                                <div className="flex items-center justify-between mb-1">
+                                  <span>Priority: {item.priority}</span>
+                                  <span className="text-xs text-gray-400">#{index + 1}</span>
+                                </div>
+                                <p>Uploaded: {new Date(item.uploadDate).toLocaleDateString()}</p>
+                                {item.publishDate && (
+                                  <p>Published: {new Date(item.publishDate).toLocaleDateString()}</p>
+                                )}
+                              </div>
+                              <button
+                                onClick={() => deleteAirtableQueueItem(item.id)}
+                                className="w-full px-3 py-2 text-xs font-medium rounded-lg transition-colors"
+                                style={{ backgroundColor: '#EF4444', color: '#FFFFFF' }}
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="p-8 text-center">
+                        <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                          <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                          </svg>
+                        </div>
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">No queued images</h3>
+                        <p className="text-sm text-gray-500">Your processed images will appear here</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </>
         ) : (
