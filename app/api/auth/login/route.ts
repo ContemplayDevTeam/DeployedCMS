@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
 
     // Get user by email
     const user = await airtable.getUserByEmail(email)
-    if (!user) {
+    if (!user || !user.password) {
       return NextResponse.json(
         { error: 'Invalid email or password' },
         { status: 401 }
