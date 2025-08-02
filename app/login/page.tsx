@@ -157,7 +157,7 @@ export default function Login() {
 
             <div className="mt-6 text-center">
               <p className="text-sm" style={{ color: '#6B7280' }}>
-                Don't have an account?{' '}
+                Don&apos;t have an account?{' '}
                 <Link href="/signup" className="font-medium transition-colors" style={{ color: '#8FA8A8' }}>
                   Sign up here
                 </Link>

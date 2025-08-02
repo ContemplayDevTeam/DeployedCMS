@@ -14,14 +14,20 @@ export default function Landing() {
     
     setIsLoading(true)
     
-    // Store email for the auth pages
-    localStorage.setItem('uploader_email', email)
-    
-    // Redirect to appropriate auth page
-    if (action === 'login') {
-      router.push('/login')
-    } else {
-      router.push('/signup')
+    try {
+      // Store email for the auth pages
+      localStorage.setItem('uploader_email', email)
+      
+      // Redirect to appropriate auth page
+      if (action === 'login') {
+        router.push('/login')
+      } else {
+        router.push('/signup')
+      }
+    } catch (error) {
+      console.error('Navigation error:', error)
+    } finally {
+      setIsLoading(false)
     }
   }
 
