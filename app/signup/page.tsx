@@ -7,11 +7,7 @@ import Link from 'next/link'
 export default function Signup() {
   const router = useRouter()
   const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-    confirmPassword: '',
-    firstName: '',
-    lastName: ''
+    email: ''
   })
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
@@ -19,16 +15,6 @@ export default function Signup() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
-
-    if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match')
-      return
-    }
-
-    if (formData.password.length < 6) {
-      setError('Password must be at least 6 characters')
-      return
-    }
 
     setIsLoading(true)
 
@@ -39,10 +25,7 @@ export default function Signup() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          email: formData.email,
-          password: formData.password,
-          firstName: formData.firstName,
-          lastName: formData.lastName
+          email: formData.email
         }),
       })
 
@@ -110,10 +93,10 @@ export default function Signup() {
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
             <h2 className="text-3xl font-bold" style={{ color: '#4A5555' }}>
-              Create your account
+              Join ContemPlay
             </h2>
             <p className="mt-2 text-sm" style={{ color: '#6B7280' }}>
-              Start uploading and managing your content
+              Enter your email to get started
             </p>
           </div>
 
@@ -125,39 +108,6 @@ export default function Signup() {
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="firstName" className="block text-sm font-medium mb-2" style={{ color: '#4A5555' }}>
-                    First Name
-                  </label>
-                  <input
-                    id="firstName"
-                    name="firstName"
-                    type="text"
-                    required
-                    className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:border-transparent transition-all"
-                    style={{ borderColor: '#8FA8A8', backgroundColor: '#FFFFFF', color: '#4A5555' }}
-                    value={formData.firstName}
-                    onChange={handleChange}
-                  />
-                </div>
-                <div>
-                  <label htmlFor="lastName" className="block text-sm font-medium mb-2" style={{ color: '#4A5555' }}>
-                    Last Name
-                  </label>
-                  <input
-                    id="lastName"
-                    name="lastName"
-                    type="text"
-                    required
-                    className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:border-transparent transition-all"
-                    style={{ borderColor: '#8FA8A8', backgroundColor: '#FFFFFF', color: '#4A5555' }}
-                    value={formData.lastName}
-                    onChange={handleChange}
-                  />
-                </div>
-              </div>
-
               <div>
                 <label htmlFor="email" className="block text-sm font-medium mb-2" style={{ color: '#4A5555' }}>
                   Email Address
@@ -167,41 +117,10 @@ export default function Signup() {
                   name="email"
                   type="email"
                   required
+                  placeholder="Enter your email address"
                   className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:border-transparent transition-all"
                   style={{ borderColor: '#8FA8A8', backgroundColor: '#FFFFFF', color: '#4A5555' }}
                   value={formData.email}
-                  onChange={handleChange}
-                />
-              </div>
-
-              <div>
-                <label htmlFor="password" className="block text-sm font-medium mb-2" style={{ color: '#4A5555' }}>
-                  Password
-                </label>
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  required
-                  className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:border-transparent transition-all"
-                  style={{ borderColor: '#8FA8A8', backgroundColor: '#FFFFFF', color: '#4A5555' }}
-                  value={formData.password}
-                  onChange={handleChange}
-                />
-              </div>
-
-              <div>
-                <label htmlFor="confirmPassword" className="block text-sm font-medium mb-2" style={{ color: '#4A5555' }}>
-                  Confirm Password
-                </label>
-                <input
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  type="password"
-                  required
-                  className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:border-transparent transition-all"
-                  style={{ borderColor: '#8FA8A8', backgroundColor: '#FFFFFF', color: '#4A5555' }}
-                  value={formData.confirmPassword}
                   onChange={handleChange}
                 />
               </div>
@@ -215,7 +134,7 @@ export default function Signup() {
                 {isLoading ? (
                   <div className="w-5 h-5 border-2 border-transparent rounded-full spinner mx-auto" style={{ borderColor: '#FFFFFF', borderTopColor: 'transparent' }}></div>
                 ) : (
-                  'Create Account'
+                  'Get Started'
                 )}
               </button>
             </form>

@@ -1,15 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { AirtableBackend } from '@/lib/airtable'
-import bcrypt from 'bcryptjs'
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, password } = await request.json()
+    const { email } = await request.json()
 
     // Validate input
-    if (!email || !password) {
+    if (!email) {
       return NextResponse.json(
-        { error: 'Email and password are required' },
+        { error: 'Email is required' },
+        { status: 400 }
+      )
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
+      return NextResponse.json(
+        { error: 'Please enter a valid email address' },
         { status: 400 }
       )
     }
@@ -29,18 +37,9 @@ export async function POST(request: NextRequest) {
 
     // Get user by email
     const user = await airtable.getUserByEmail(email)
-    if (!user || !user.password) {
+    if (!user) {
       return NextResponse.json(
-        { error: 'Invalid email or password' },
-        { status: 401 }
-      )
-    }
-
-    // Verify password
-    const isValidPassword = await bcrypt.compare(password, user.password)
-    if (!isValidPassword) {
-      return NextResponse.json(
-        { error: 'Invalid email or password' },
+        { error: 'User not found. Please sign up first.' },
         { status: 401 }
       )
     }
@@ -57,16 +56,14 @@ export async function POST(request: NextRequest) {
       success: true,
       userId: user.id,
       email: user.email,
-      firstName: user.firstName,
-      lastName: user.lastName,
       message: 'Login successful'
     })
 
-  } catch (error) {
-    console.error('Login error:', error)
-    return NextResponse.json(
-      { error: 'Failed to authenticate' },
-      { status: 500 }
-    )
+  } catch (err: any) {
+    console.error("💥 LOGIN ERROR:", err);
+    return new Response(JSON.stringify({ error: err.message }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 } 

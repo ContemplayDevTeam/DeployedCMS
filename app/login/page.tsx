@@ -7,8 +7,7 @@ import Link from 'next/link'
 export default function Login() {
   const router = useRouter()
   const [formData, setFormData] = useState({
-    email: '',
-    password: ''
+    email: ''
   })
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
@@ -25,8 +24,7 @@ export default function Login() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          email: formData.email,
-          password: formData.password
+          email: formData.email
         }),
       })
 
@@ -97,7 +95,7 @@ export default function Login() {
               Welcome back
             </h2>
             <p className="mt-2 text-sm" style={{ color: '#6B7280' }}>
-              Sign in to your account to continue
+              Enter your email to continue
             </p>
           </div>
 
@@ -118,25 +116,10 @@ export default function Login() {
                   name="email"
                   type="email"
                   required
+                  placeholder="Enter your email address"
                   className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:border-transparent transition-all"
                   style={{ borderColor: '#8FA8A8', backgroundColor: '#FFFFFF', color: '#4A5555' }}
                   value={formData.email}
-                  onChange={handleChange}
-                />
-              </div>
-
-              <div>
-                <label htmlFor="password" className="block text-sm font-medium mb-2" style={{ color: '#4A5555' }}>
-                  Password
-                </label>
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  required
-                  className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:border-transparent transition-all"
-                  style={{ borderColor: '#8FA8A8', backgroundColor: '#FFFFFF', color: '#4A5555' }}
-                  value={formData.password}
                   onChange={handleChange}
                 />
               </div>

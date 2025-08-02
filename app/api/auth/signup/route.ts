@@ -1,22 +1,58 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { AirtableBackend } from '@/lib/airtable'
-import bcrypt from 'bcryptjs'
+
+async function findOrCreateUserByEmail(email: string) {
+  const baseId = process.env.AIRTABLE_BASE_ID;
+  const token = process.env.AIRTABLE_API_KEY;
+  const tableName = "Users";
+
+  const url = `https://api.airtable.com/v0/${baseId}/${tableName}?filterByFormula=${encodeURIComponent(`{Email} = '${email}'`)}`;
+
+  const getRes = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+
+  const getData = await getRes.json();
+
+  if (getData.records?.length) return getData.records[0];
+
+  const createRes = await fetch(`https://api.airtable.com/v0/${baseId}/${tableName}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      fields: {
+        Email: email,
+        "Is Verified": false,
+        "Is Paid": false,
+      },
+    }),
+  });
+
+  return await createRes.json();
+}
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, password, firstName, lastName } = await request.json()
+    const { email } = await request.json()
 
     // Validate input
-    if (!email || !password || !firstName || !lastName) {
+    if (!email) {
       return NextResponse.json(
-        { error: 'All fields are required' },
+        { error: 'Email is required' },
         { status: 400 }
       )
     }
 
-    if (password.length < 6) {
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
       return NextResponse.json(
-        { error: 'Password must be at least 6 characters' },
+        { error: 'Please enter a valid email address' },
         { status: 400 }
       )
     }
@@ -32,36 +68,13 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const airtable = new AirtableBackend(apiKey, baseId)
-
-    // Check if user already exists
-    const existingUser = await airtable.getUserByEmail(email)
-    if (existingUser) {
-      return NextResponse.json(
-        { error: 'User with this email already exists' },
-        { status: 409 }
-      )
-    }
-
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 12)
-
-    // Create user
-    const userData = {
-      email,
-      password: hashedPassword,
-      firstName,
-      lastName,
-      isVerified: true, // Auto-verify for now
-      createdAt: new Date().toISOString()
-    }
-
-    const newUser = await airtable.createUser(userData)
+    // Use the findOrCreateUserByEmail function
+    const userRecord = await findOrCreateUserByEmail(email);
 
     return NextResponse.json({
       success: true,
-      userId: newUser.id,
-      message: 'User created successfully'
+      userId: userRecord.id,
+      message: userRecord.fields ? 'User created successfully' : 'User found successfully'
     })
 
   } catch (error) {

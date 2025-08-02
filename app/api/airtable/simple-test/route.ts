@@ -21,7 +21,7 @@ export async function GET() {
     const base = new Airtable({ apiKey }).base(baseId)
     
     // Simple test - try to access the Users table
-    const usersTable = base('Users')
+    const usersTable = base('tblXfgLJOJH94UGwD')
     const records = await usersTable.select({ maxRecords: 1 }).firstPage()
     
     return NextResponse.json({
