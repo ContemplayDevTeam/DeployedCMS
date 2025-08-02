@@ -33,24 +33,41 @@ export class AirtableBackend {
   }
 
   private async makeRequest(endpoint: string, options: RequestInit = {}) {
-    console.log('TOKEN:', process.env.AIRTABLE_API_KEY)
-    console.log('BASE ID:', process.env.AIRTABLE_BASE_ID)
+    console.log('🔗 Making Airtable request to:', endpoint)
+    console.log('🔧 Request method:', options.method || 'GET')
+    
     const url = `${this.baseUrl}${endpoint}`
-    const response = await fetch(url, {
-      ...options,
-      headers: {
-        'Authorization': `Bearer ${this.apiKey}`,
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
-    })
+    console.log('🌐 Full URL:', url)
+    
+    try {
+      const response = await fetch(url, {
+        ...options,
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json',
+          ...options.headers,
+        },
+      })
 
-    if (!response.ok) {
-      const errorText = await response.text()
-      throw new Error(`Airtable API error: ${response.status} ${response.statusText} - ${errorText}`)
+      console.log('📡 Response status:', response.status, response.statusText)
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('❌ Airtable API error response:')
+        console.error('   Status:', response.status, response.statusText)
+        console.error('   Headers:', Object.fromEntries(response.headers.entries()))
+        console.error('   Body:', errorText)
+        
+        throw new Error(`Airtable API error: ${response.status} ${response.statusText} - ${errorText}`)
+      }
+
+      const responseData = await response.json()
+      console.log('✅ Airtable request successful')
+      return responseData
+    } catch (error) {
+      console.error('💥 Request failed:', error)
+      throw error
     }
-
-    return response.json()
   }
 
   // User management
@@ -195,43 +212,70 @@ export class AirtableBackend {
     size: number
     notes?: string
   }): Promise<QueueItem> {
+    console.log('📤 Starting image queue process...')
+    
     try {
       // Get next priority number for this user
+      console.log('🔢 Getting next priority for user:', userEmail)
       const priority = await this.getNextPriority(userEmail)
+      console.log('📊 Next priority:', priority)
+
+      // Prepare the payload - only include fields that exist in the Airtable table
+      const payload = {
+        records: [{
+          fields: {
+            'User Email': userEmail,
+            'Image URL': imageData.url,
+            'Upload Date': new Date().toISOString().split('T')[0], // Date-only format (YYYY-MM-DD)
+            'Priority': priority
+          }
+        }]
+      }
+
+      console.log('📦 Payload being sent to Airtable:')
+      console.log('   Table: Image Queue')
+      console.log('   Fields:', JSON.stringify(payload.records[0].fields, null, 2))
+      console.log('   Upload Date value:', payload.records[0].fields['Upload Date'])
+      console.log('   Upload Date type:', typeof payload.records[0].fields['Upload Date'])
 
       const response = await this.makeRequest('/Image Queue', {
         method: 'POST',
-        body: JSON.stringify({
-          records: [{
-            fields: {
-              'User Email': userEmail,
-              'Image URL': imageData.url,
-              'File Name': imageData.name,
-              'File Size': imageData.size,
-              'Status': 'queued',
-              'Upload Date': new Date().toISOString(),
-              'Priority': priority,
-              'Notes': imageData.notes || 'Auto-queued from uploader'
-            }
-          }]
-        })
+        body: JSON.stringify(payload)
+      })
+
+      console.log('✅ Airtable response received:', {
+        recordCount: response.records?.length || 0,
+        recordId: response.records?.[0]?.id
       })
 
       const record = response.records[0]
-      return {
+      const queueItem = {
         id: record.id,
         userEmail: record.fields['User Email'] as string,
         imageUrl: record.fields['Image URL'] as string,
-        fileName: record.fields['File Name'] as string,
-        fileSize: record.fields['File Size'] as number,
-        status: record.fields['Status'] as 'queued' | 'processing' | 'published' | 'failed',
+        fileName: imageData.name, // Use the original data since it's not stored in Airtable
+        fileSize: imageData.size, // Use the original data since it's not stored in Airtable
+        status: 'queued' as const, // Default status since it's not stored in Airtable
         uploadDate: record.fields['Upload Date'] as string,
         priority: record.fields['Priority'] as number,
-        notes: record.fields['Notes'] as string
+        notes: imageData.notes || '' // Use the original data since it's not stored in Airtable
       }
+
+      console.log('🎉 Queue item created successfully:', queueItem.id)
+      return queueItem
     } catch (error) {
-      console.error('Error queuing image:', error)
-      throw new Error('Failed to queue image')
+      console.error('❌ Error queuing image:', error)
+      
+      // Log the specific error details
+      if (error instanceof Error) {
+        console.error('📋 Error details:', {
+          name: error.name,
+          message: error.message,
+          stack: error.stack
+        })
+      }
+      
+      throw new Error(`Failed to queue ${imageData.name}: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
 
@@ -243,13 +287,13 @@ export class AirtableBackend {
         id: record.id,
         userEmail: record.fields['User Email'] as string,
         imageUrl: record.fields['Image URL'] as string,
-        fileName: record.fields['File Name'] as string,
-        fileSize: record.fields['File Size'] as number,
-        status: record.fields['Status'] as 'queued' | 'processing' | 'published' | 'failed',
+        fileName: 'Unknown', // Not stored in Airtable
+        fileSize: 0, // Not stored in Airtable
+        status: 'queued' as const, // Default status since it's not stored in Airtable
         uploadDate: record.fields['Upload Date'] as string,
         publishDate: record.fields['Publish Date'] as string,
         priority: record.fields['Priority'] as number,
-        notes: record.fields['Notes'] as string
+        notes: '' // Not stored in Airtable
       }))
     } catch (error) {
       console.error('Error getting queue status:', error)
@@ -259,16 +303,18 @@ export class AirtableBackend {
 
   async updateQueueItemStatus(recordId: string, status: 'queued' | 'processing' | 'published' | 'failed', notes?: string): Promise<boolean> {
     try {
-      const updateData: Record<string, any> = {
-        'Status': status
-      }
+      const updateData: Record<string, any> = {}
 
       if (status === 'published') {
-        updateData['Publish Date'] = new Date().toISOString()
+        updateData['Publish Date'] = new Date().toISOString().split('T')[0] // Date-only format (YYYY-MM-DD)
       }
 
-      if (notes) {
-        updateData['Notes'] = notes
+      // Note: Status and Notes fields don't exist in the current Airtable schema
+      // Only updating Publish Date when status is 'published'
+
+      if (Object.keys(updateData).length === 0) {
+        console.log('No fields to update in Airtable schema')
+        return true
       }
 
       await this.makeRequest(`/Image Queue`, {
@@ -335,6 +381,41 @@ export class AirtableBackend {
     }
   }
 
+  // Get table schema to check field names
+  async getTableSchema(tableName: string): Promise<any> {
+    try {
+      console.log(`🔍 Getting schema for table: ${tableName}`)
+      const response = await fetch(`https://api.airtable.com/v0/meta/bases/${this.baseId}/tables`, {
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        throw new Error(`Failed to get table schema: ${response.status} ${response.statusText} - ${errorText}`)
+      }
+
+      const data = await response.json()
+      const table = data.tables.find((t: any) => t.name === tableName)
+      
+      if (!table) {
+        throw new Error(`Table '${tableName}' not found`)
+      }
+
+      console.log(`📋 Table schema for '${tableName}':`)
+      table.fields.forEach((field: any) => {
+        console.log(`   - ${field.name} (${field.type})`)
+      })
+
+      return table
+    } catch (error) {
+      console.error('Error getting table schema:', error)
+      throw error
+    }
+  }
+
   // Initialize base structure (run once to set up tables)
   async initializeBase(): Promise<boolean> {
     try {
@@ -350,4 +431,65 @@ export class AirtableBackend {
 }
 
 // Note: Don't create singleton instance here as it causes build-time errors
-// Create instances in API routes with proper environment variable checks 
+// Create instances in API routes with proper environment variable checks
+
+// Standalone function for finding or creating users
+export async function findOrCreateUserByEmail(email: string) {
+  const baseId = process.env.AIRTABLE_BASE_ID;
+  const token = process.env.AIRTABLE_API_KEY;
+  const tableName = "Users";
+
+  if (!baseId || !token) {
+    throw new Error('Airtable configuration missing');
+  }
+
+  console.log(`🔍 Searching for user with email: ${email}`);
+
+  const url = `https://api.airtable.com/v0/${baseId}/${tableName}?filterByFormula=${encodeURIComponent(`{Email} = '${email}'`)}`;
+
+  const getRes = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+
+  if (!getRes.ok) {
+    const errorText = await getRes.text();
+    throw new Error(`Failed to search for user: ${getRes.status} ${getRes.statusText} - ${errorText}`);
+  }
+
+  const getData = await getRes.json();
+  console.log(`📊 Search results: ${getData.records?.length || 0} records found`);
+
+  if (getData.records?.length > 0) {
+    console.log(`✅ Found existing user: ${getData.records[0].id}`);
+    return { ...getData.records[0], isExisting: true };
+  }
+
+  console.log(`🆕 Creating new user for email: ${email}`);
+
+  const createRes = await fetch(`https://api.airtable.com/v0/${baseId}/${tableName}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      fields: {
+        Email: email,
+        "Is Verified": false,
+        "Is Paid": false,
+      },
+    }),
+  });
+
+  if (!createRes.ok) {
+    const errorText = await createRes.text();
+    throw new Error(`Failed to create user: ${createRes.status} ${createRes.statusText} - ${errorText}`);
+  }
+
+  const createData = await createRes.json();
+  console.log(`✅ Created new user: ${createData.records?.[0]?.id}`);
+  return { ...createData.records?.[0], isExisting: false };
+} 

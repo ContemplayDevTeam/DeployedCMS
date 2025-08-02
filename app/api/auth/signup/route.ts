@@ -1,40 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-
-async function findOrCreateUserByEmail(email: string) {
-  const baseId = process.env.AIRTABLE_BASE_ID;
-  const token = process.env.AIRTABLE_API_KEY;
-  const tableName = "Users";
-
-  const url = `https://api.airtable.com/v0/${baseId}/${tableName}?filterByFormula=${encodeURIComponent(`{Email} = '${email}'`)}`;
-
-  const getRes = await fetch(url, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-  });
-
-  const getData = await getRes.json();
-
-  if (getData.records?.length) return getData.records[0];
-
-  const createRes = await fetch(`https://api.airtable.com/v0/${baseId}/${tableName}`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      fields: {
-        Email: email,
-        "Is Verified": false,
-        "Is Paid": false,
-      },
-    }),
-  });
-
-  return await createRes.json();
-}
+import { findOrCreateUserByEmail } from '@/lib/airtable'
 
 export async function POST(request: NextRequest) {
   try {
@@ -74,7 +39,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       userId: userRecord.id,
-      message: userRecord.fields ? 'User created successfully' : 'User found successfully'
+      message: userRecord.isExisting ? 'User found successfully' : 'User created successfully',
+      isExisting: userRecord.isExisting
     })
 
   } catch (error) {

@@ -11,6 +11,8 @@ interface QueueItem {
   progress?: number
   selected?: boolean
   airtableData?: Record<string, unknown> // Store original Airtable data
+  localPreview?: string // Local preview URL for immediate display
+  fileSize?: number // File size in bytes
 }
 
 export default function Home() {
@@ -79,11 +81,32 @@ export default function Home() {
       return
     }
 
+    // Immediately add files to queue with local previews
+    const newQueueItems: QueueItem[] = acceptedFiles.map(file => ({
+      id: `local-${Date.now()}-${Math.random()}`,
+      file,
+      status: 'pending',
+      selected: false,
+      localPreview: URL.createObjectURL(file),
+      fileSize: file.size
+    }))
+
+    setQueue(prev => [...prev, ...newQueueItems])
+    setStatus(`${acceptedFiles.length} file${acceptedFiles.length !== 1 ? 's' : ''} added to queue`)
+
+    // Now upload to Cloudinary and sync to Airtable
     setStatus('Uploading images to Cloudinary...')
     
     try {
       // Upload images to Cloudinary first, then queue to Airtable
-      const uploadPromises = acceptedFiles.map(async (file) => {
+      const uploadPromises = acceptedFiles.map(async (file, index) => {
+        // Update status to uploading
+        setQueue(prev => prev.map((item, i) => 
+          item.id === newQueueItems[index].id 
+            ? { ...item, status: 'uploading' as const }
+            : item
+        ))
+
         // Upload to Cloudinary
         const formData = new FormData()
         formData.append('file', file)
@@ -118,6 +141,13 @@ export default function Home() {
           throw new Error(`Failed to queue ${file.name}`)
         }
 
+        // Update status to completed
+        setQueue(prev => prev.map((item, i) => 
+          item.id === newQueueItems[index].id 
+            ? { ...item, status: 'completed' as const }
+            : item
+        ))
+
         return await queueResponse.json()
       })
 
@@ -129,16 +159,41 @@ export default function Home() {
     } catch (error) {
       console.error('Error uploading images:', error)
       setStatus('Error uploading images')
+      
+      // Update failed items status
+      newQueueItems.forEach(item => {
+        setQueue(prev => prev.map(queueItem => 
+          queueItem.id === item.id 
+            ? { ...queueItem, status: 'error' as const }
+            : queueItem
+        ))
+      })
+      
       alert('Failed to upload images. Please try again.')
     }
   }
 
   const removeFromQueue = (id: string) => {
-    setQueue(prev => prev.filter(item => item.id !== id))
+    setQueue(prev => {
+      const itemToRemove = prev.find(item => item.id === id)
+      // Clean up local preview URL if it exists
+      if (itemToRemove?.localPreview && itemToRemove.localPreview.startsWith('blob:')) {
+        URL.revokeObjectURL(itemToRemove.localPreview)
+      }
+      return prev.filter(item => item.id !== id)
+    })
   }
 
   const removeSelectedFromQueue = () => {
-    setQueue(prev => prev.filter(item => !item.selected))
+    setQueue(prev => {
+      // Clean up local preview URLs for selected items
+      prev.forEach(item => {
+        if (item.selected && item.localPreview && item.localPreview.startsWith('blob:')) {
+          URL.revokeObjectURL(item.localPreview)
+        }
+      })
+      return prev.filter(item => !item.selected)
+    })
     setIsSelectMode(false)
   }
 
@@ -197,7 +252,15 @@ export default function Home() {
   }
 
   const clearQueue = () => {
-    setQueue([])
+    setQueue(prev => {
+      // Clean up all local preview URLs
+      prev.forEach(item => {
+        if (item.localPreview && item.localPreview.startsWith('blob:')) {
+          URL.revokeObjectURL(item.localPreview)
+        }
+      })
+      return []
+    })
     setStatus('Queue cleared')
     setIsSelectMode(false)
   }
@@ -223,7 +286,9 @@ export default function Home() {
           file: new File([], item.fileName as string), // Create dummy file object
           status: item.status as 'pending' | 'uploading' | 'completed' | 'error',
           selected: false,
-          airtableData: item // Store original Airtable data
+          airtableData: item, // Store original Airtable data
+          localPreview: item.imageUrl, // Use imageUrl for local preview
+          fileSize: item.size // Use size from Airtable
         }))
         setQueue(localQueueItems)
       }
@@ -238,6 +303,17 @@ export default function Home() {
       refreshAirtableQueue()
     }
   }, [storedEmail, refreshAirtableQueue])
+
+  // Cleanup local preview URLs on component unmount
+  useEffect(() => {
+    return () => {
+      queue.forEach(item => {
+        if (item.localPreview && item.localPreview.startsWith('blob:')) {
+          URL.revokeObjectURL(item.localPreview)
+        }
+      })
+    }
+  }, [])
 
   const { getRootProps, getInputProps } = useDropzone({ 
     onDrop,
@@ -423,13 +499,22 @@ export default function Home() {
                             
                             {/* Image thumbnail */}
                             <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden border border-gray-200">
-                              {item.file.type.startsWith('image/') ? (
+                              {item.localPreview ? (
                                 <img
-                                  src={URL.createObjectURL(item.file)}
+                                  src={item.localPreview}
                                   alt={item.file.name}
                                   className="w-full h-full object-cover"
-                                  onLoad={(e) => {
-                                    URL.revokeObjectURL(e.currentTarget.src)
+                                />
+                              ) : item.airtableData?.imageUrl ? (
+                                <img
+                                  src={item.airtableData.imageUrl as string}
+                                  alt={item.file.name}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    // Fallback to icon if image fails to load
+                                    e.currentTarget.style.display = 'none'
+                                    const icon = e.currentTarget.parentElement?.querySelector('.fallback-icon')
+                                    if (icon) icon.classList.remove('hidden')
                                   }}
                                 />
                               ) : (
@@ -437,6 +522,10 @@ export default function Home() {
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                 </svg>
                               )}
+                              {/* Fallback icon for failed loads */}
+                              <svg className="w-6 h-6 text-gray-400 fallback-icon hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                              </svg>
                             </div>
                             
                             {/* File info */}
@@ -453,8 +542,12 @@ export default function Home() {
                                 <p className="text-sm font-medium text-gray-900 truncate">{item.file.name}</p>
                               </div>
                               
-                              <div className="flex items-center justify-between">
-                                <p className="text-xs text-gray-500">{(item.file.size / 1024 / 1024).toFixed(2)} MB</p>
+                                                              <div className="flex items-center justify-between">
+                                  <p className="text-xs text-gray-500">
+                                    {item.fileSize ? (item.fileSize / 1024 / 1024).toFixed(2) : 
+                                     item.airtableData?.size ? ((item.airtableData.size as number) / 1024 / 1024).toFixed(2) : 
+                                     '0.00'} MB
+                                  </p>
                                 <div className="flex items-center space-x-1">
                                   <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                                     item.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
