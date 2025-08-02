@@ -65,9 +65,7 @@ export default function Signup() {
             <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#4A5555' }}>
               <span className="font-bold text-sm" style={{ color: '#D0DADA' }}>C</span>
             </div>
-            <h1 className="text-xl font-bold" style={{ color: '#D0DADA' }}>
-              ContemPlay
-            </h1>
+
           </div>
           <div className="flex items-center space-x-4">
             <Link 
@@ -93,7 +91,7 @@ export default function Signup() {
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
             <h2 className="text-3xl font-bold" style={{ color: '#4A5555' }}>
-              Join ContemPlay
+              Get Started
             </h2>
             <p className="mt-2 text-sm" style={{ color: '#6B7280' }}>
               Enter your email to get started

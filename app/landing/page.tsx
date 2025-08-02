@@ -71,9 +71,7 @@ export default function Landing() {
               <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#4A5555' }}>
                 <span className="font-bold text-sm" style={{ color: '#D0DADA' }}>C</span>
               </div>
-              <h1 className="text-xl font-bold" style={{ color: '#D0DADA' }}>
-                ContemPlay
-              </h1>
+
             </div>
                      <div className="hidden md:flex items-center space-x-4 text-sm">
              <div className="flex items-center space-x-2">
@@ -232,7 +230,7 @@ export default function Landing() {
                 <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#8FA8A8' }}>
                   <span className="font-bold text-sm" style={{ color: '#D0DADA' }}>C</span>
                 </div>
-                <span className="text-xl font-bold" style={{ color: '#D0DADA' }}>ContemPlay</span>
+
               </div>
                              <p style={{ color: '#D0DADA' }}>
                  Upload your product images to our publishing queue and let us handle the rest.
@@ -261,7 +259,7 @@ export default function Landing() {
           </div>
           
           <div className="border-t mt-8 pt-8 text-center" style={{ borderColor: '#8FA8A8', color: '#D0DADA' }}>
-            <p>© {new Date().getFullYear()} ContemPlay. All rights reserved.</p>
+            <p>© {new Date().getFullYear()}. All rights reserved.</p>
           </div>
         </div>
       </footer>

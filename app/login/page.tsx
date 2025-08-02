@@ -64,9 +64,7 @@ export default function Login() {
             <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#4A5555' }}>
               <span className="font-bold text-sm" style={{ color: '#D0DADA' }}>C</span>
             </div>
-            <h1 className="text-xl font-bold" style={{ color: '#D0DADA' }}>
-              ContemPlay
-            </h1>
+            
           </div>
           <div className="flex items-center space-x-4">
             <Link 

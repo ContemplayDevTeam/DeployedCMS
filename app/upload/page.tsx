@@ -96,32 +96,13 @@ export default function Home() {
     }
   }
 
-  const deleteAirtableQueueItem = async (itemId: string) => {
-    try {
-      console.log('🗑️ Attempting to delete Airtable queue item:', itemId)
-      
-      const response = await fetch('/api/airtable/queue/delete', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ recordId: itemId }),
-      })
-
-      if (response.ok) {
-        const result = await response.json()
-        console.log('✅ Successfully deleted Airtable queue item:', itemId, result)
-        // Remove item from local state
-        setAirtableQueueItems(prev => prev.filter(item => item.id !== itemId))
-      } else {
-        const errorData = await response.json().catch(() => ({}))
-        console.error('❌ Failed to delete Airtable queue item:', response.status, errorData)
-        alert(`Failed to delete item: ${errorData.error || 'Unknown error'}`)
-      }
-    } catch (error) {
-      console.error('❌ Error deleting Airtable queue item:', error)
-      alert('Network error while deleting item')
-    }
+  const deleteAirtableQueueItem = (itemId: string) => {
+    console.log('🗑️ Removing Airtable queue item from frontend display:', itemId)
+    
+    // Only remove from frontend state - don't actually delete from Airtable
+    setAirtableQueueItems(prev => prev.filter(item => item.id !== itemId))
+    
+    console.log('✅ Successfully removed item from frontend display')
   }
 
   const moveAirtableItem = async (fromIndex: number, toIndex: number) => {
@@ -588,17 +569,8 @@ export default function Home() {
       <header className="shadow-sm border-b z-50" style={{ backgroundColor: '#8FA8A8', borderColor: '#4A5555' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex justify-between items-center">
-            {/* Left side - Logo and navigation */}
+            {/* Left side - Navigation only */}
             <div className="flex items-center space-x-6">
-              <Link href="/" className="flex items-center space-x-2">
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#4A5555' }}>
-                  <span className="font-bold text-sm" style={{ color: '#D0DADA' }}>C</span>
-                </div>
-                <span className="text-xl font-bold" style={{ color: '#D0DADA' }}>
-                  ContemPlay
-                </span>
-              </Link>
-              
               <Link 
                 href="/" 
                 className="transition-colors flex items-center space-x-1"
@@ -1036,13 +1008,13 @@ export default function Home() {
               <div className="w-6 h-6 rounded flex items-center justify-center" style={{ backgroundColor: '#8FA8A8' }}>
                 <span className="font-bold text-xs" style={{ color: '#D0DADA' }}>C</span>
               </div>
-              <span className="text-sm font-medium" style={{ color: '#D0DADA' }}>ContemPlay</span>
+
             </div>
             
             <div className="flex items-center space-x-6 text-sm" style={{ color: '#D0DADA' }}>
               <Link href="#" className="transition-colors" style={{ color: '#D0DADA' }}>Help</Link>
               <Link href="#" className="transition-colors" style={{ color: '#D0DADA' }}>Support</Link>
-              <span>© {new Date().getFullYear()} ContemPlay</span>
+
             </div>
           </div>
         </div>
