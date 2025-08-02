@@ -1,13 +1,9 @@
 import { v2 as cloudinary } from 'cloudinary'
 
-// Configure Cloudinary using the URL format
-const cloudinaryUrl = process.env.CLOUDINARY_URL || 'cloudinary://318978326338597:cpIAVTVJEFRIS06E2n_ZB4Gj1Qw@dyeywnxdi'
-
-// Parse the URL to get credentials
-const url = new URL(cloudinaryUrl)
-const apiKey = url.username
-const apiSecret = url.password
-const cloudName = url.hostname
+// Configure Cloudinary using individual environment variables
+const cloudName = process.env.CLOUDINARY_CLOUD_NAME || 'dyeywnxdi'
+const apiKey = process.env.CLOUDINARY_API_KEY || '318978326338597'
+const apiSecret = process.env.CLOUDINARY_API_SECRET || 'cpIAVTVJEFRIS06E2n_ZB4Gj1Qw'
 
 cloudinary.config({
   cloud_name: cloudName,
