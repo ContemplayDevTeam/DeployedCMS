@@ -1,10 +1,18 @@
 import { v2 as cloudinary } from 'cloudinary'
 
-// Configure Cloudinary
+// Configure Cloudinary using the URL format
+const cloudinaryUrl = process.env.CLOUDINARY_URL || 'cloudinary://318978326338597:cpIAVTVJEFRIS06E2n_ZB4Gj1Qw@dyeywnxdi'
+
+// Parse the URL to get credentials
+const url = new URL(cloudinaryUrl)
+const apiKey = url.username
+const apiSecret = url.password
+const cloudName = url.hostname
+
 cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
+  cloud_name: cloudName,
+  api_key: apiKey,
+  api_secret: apiSecret,
 })
 
 export default cloudinary
