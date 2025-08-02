@@ -11,6 +11,7 @@ interface QueueItem {
   status: 'pending' | 'uploading' | 'completed' | 'error'
   progress?: number
   selected?: boolean
+  airtableData?: any // Store original Airtable data
 }
 
 export default function Home() {
@@ -58,7 +59,7 @@ export default function Home() {
     setEmail('')
   }
 
-  const onDrop = (acceptedFiles: File[]) => {
+  const onDrop = async (acceptedFiles: File[]) => {
     // Check file sizes
     const maxSize = 10 * 1024 * 1024 // 10MB
     const oversizedFiles = acceptedFiles.filter(file => file.size > maxSize)
@@ -71,17 +72,53 @@ export default function Home() {
       if (validFiles.length === 0) return
       acceptedFiles = validFiles
     }
+
+    if (!storedEmail) {
+      alert('Please enter your email to continue')
+      return
+    }
+
+    setStatus('Uploading images to Airtable queue...')
     
-    // Automatically add files to queue
-    const newQueueItems: QueueItem[] = acceptedFiles.map(file => ({
-      id: Math.random().toString(36).substr(2, 9),
-      file,
-      status: 'pending',
-      selected: false
-    }))
-    setQueue(prev => [...prev, ...newQueueItems])
-    setStatus(`${acceptedFiles.length} file${acceptedFiles.length !== 1 ? 's' : ''} added to queue`)
-    setShowQueue(true)
+    try {
+      // For now, we'll simulate image upload to cloud storage
+      // In a real implementation, you'd upload to S3, Cloudinary, etc.
+      const uploadPromises = acceptedFiles.map(async (file) => {
+        // Simulate cloud storage upload
+        const imageUrl = `https://example.com/uploads/${file.name}`
+        
+        // Queue to Airtable
+        const response = await fetch('/api/airtable/queue/add', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: storedEmail,
+            imageData: {
+              url: imageUrl,
+              name: file.name,
+              size: file.size,
+              notes: 'Uploaded via web interface'
+            }
+          })
+        })
+
+        if (!response.ok) {
+          throw new Error(`Failed to queue ${file.name}`)
+        }
+
+        return await response.json()
+      })
+
+      await Promise.all(uploadPromises)
+      setStatus(`${acceptedFiles.length} file${acceptedFiles.length !== 1 ? 's' : ''} successfully queued to Airtable`)
+      
+      // Refresh queue status
+      await refreshAirtableQueue()
+    } catch (error) {
+      console.error('Error uploading to Airtable:', error)
+      setStatus('Error uploading to Airtable queue')
+      alert('Failed to upload images to Airtable. Please try again.')
+    }
   }
 
   const removeFromQueue = (id: string) => {
@@ -154,6 +191,41 @@ export default function Home() {
   }
 
   const selectedCount = queue.filter(item => item.selected).length
+
+  // Airtable queue management
+  const refreshAirtableQueue = async () => {
+    if (!storedEmail) return
+
+    try {
+      const response = await fetch('/api/airtable/queue/status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: storedEmail })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        // Convert Airtable queue items to local format
+        const localQueueItems: QueueItem[] = data.queueItems.map((item: any) => ({
+          id: item.id,
+          file: new File([], item.fileName), // Create dummy file object
+          status: item.status,
+          selected: false,
+          airtableData: item // Store original Airtable data
+        }))
+        setQueue(localQueueItems)
+      }
+    } catch (error) {
+      console.error('Error refreshing Airtable queue:', error)
+    }
+  }
+
+  // Load Airtable queue on component mount
+  useEffect(() => {
+    if (storedEmail) {
+      refreshAirtableQueue()
+    }
+  }, [storedEmail])
 
   const { getRootProps, getInputProps } = useDropzone({ 
     onDrop,
