@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { AirtableBackend } from '@/lib/airtable'
 
-export async function POST(request: NextRequest) {
+export async function POST() {
   console.log('🧪 Testing queue record creation...')
   
   try {

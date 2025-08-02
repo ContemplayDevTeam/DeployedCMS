@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useDropzone } from 'react-dropzone'
 import Link from 'next/link'
 
@@ -10,9 +10,10 @@ interface QueueItem {
   status: 'pending' | 'uploading' | 'completed' | 'error'
   progress?: number
   selected?: boolean
-  airtableData?: Record<string, unknown> // Store original Airtable data
   localPreview?: string // Local preview URL for immediate display
   fileSize?: number // File size in bytes
+  cloudinaryUrl?: string // Cloudinary URL after upload
+  uploadError?: string // Error message if upload failed
 }
 
 export default function Home() {
@@ -25,6 +26,7 @@ export default function Home() {
   const [showQueue, setShowQueue] = useState<boolean>(true)
   const [isSelectMode, setIsSelectMode] = useState<boolean>(false)
   const [draggedItem, setDraggedItem] = useState<string | null>(null)
+  const [isProcessing, setIsProcessing] = useState<boolean>(false)
   const mainRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -81,7 +83,7 @@ export default function Home() {
       return
     }
 
-    // Immediately add files to queue with local previews
+    // Immediately add files to local queue with previews
     const newQueueItems: QueueItem[] = acceptedFiles.map(file => ({
       id: `local-${Date.now()}-${Math.random()}`,
       file,
@@ -92,84 +94,139 @@ export default function Home() {
     }))
 
     setQueue(prev => [...prev, ...newQueueItems])
-    setStatus(`${acceptedFiles.length} file${acceptedFiles.length !== 1 ? 's' : ''} added to queue`)
+    setStatus(`${acceptedFiles.length} file${acceptedFiles.length !== 1 ? 's' : ''} added to local queue`)
+  }
 
-    // Now upload to Cloudinary and sync to Airtable
-    setStatus('Uploading images to Cloudinary...')
+  const uploadToCloudinary = async (item: QueueItem): Promise<string> => {
+    const formData = new FormData()
+    formData.append('file', item.file)
     
+    const uploadResponse = await fetch('/api/upload', {
+      method: 'POST',
+      body: formData
+    })
+
+    if (!uploadResponse.ok) {
+      throw new Error(`Failed to upload ${item.file.name} to Cloudinary`)
+    }
+
+    const uploadResult = await uploadResponse.json()
+    return uploadResult.imageUrl
+  }
+
+  const processQueue = async () => {
+    if (!storedEmail || queue.length === 0) {
+      alert('No items in queue to process')
+      return
+    }
+
+    setIsProcessing(true)
+    setStatus('Processing queue...')
+
     try {
-      // Upload images to Cloudinary first, then queue to Airtable
-      const uploadPromises = acceptedFiles.map(async (file, index) => {
+      // First, upload all pending items to Cloudinary
+      const itemsToProcess = queue.filter(item => item.status === 'pending')
+      
+      if (itemsToProcess.length === 0) {
+        setStatus('No pending items to process')
+        setIsProcessing(false)
+        return
+      }
+
+      setStatus(`Uploading ${itemsToProcess.length} images to Cloudinary...`)
+
+      // Upload each item to Cloudinary
+      for (let i = 0; i < itemsToProcess.length; i++) {
+        const item = itemsToProcess[i]
+        
         // Update status to uploading
-        setQueue(prev => prev.map((item, i) => 
-          item.id === newQueueItems[index].id 
-            ? { ...item, status: 'uploading' as const }
-            : item
-        ))
-
-        // Upload to Cloudinary
-        const formData = new FormData()
-        formData.append('file', file)
-        
-        const uploadResponse = await fetch('/api/upload', {
-          method: 'POST',
-          body: formData
-        })
-
-        if (!uploadResponse.ok) {
-          throw new Error(`Failed to upload ${file.name} to Cloudinary`)
-        }
-
-        const uploadResult = await uploadResponse.json()
-        
-        // Queue to Airtable with real image URL
-        const queueResponse = await fetch('/api/airtable/queue/add', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email: storedEmail,
-            imageData: {
-              url: uploadResult.imageUrl,
-              name: file.name,
-              size: file.size,
-              notes: 'Uploaded via web interface'
-            }
-          })
-        })
-
-        if (!queueResponse.ok) {
-          throw new Error(`Failed to queue ${file.name}`)
-        }
-
-        // Update status to completed
-        setQueue(prev => prev.map((item, i) => 
-          item.id === newQueueItems[index].id 
-            ? { ...item, status: 'completed' as const }
-            : item
-        ))
-
-        return await queueResponse.json()
-      })
-
-      await Promise.all(uploadPromises)
-      setStatus(`${acceptedFiles.length} file${acceptedFiles.length !== 1 ? 's' : ''} successfully uploaded and queued`)
-      
-      // Refresh queue status
-      await refreshAirtableQueue()
-    } catch (error) {
-      console.error('Error uploading images:', error)
-      setStatus('Error uploading images')
-      
-      // Update failed items status
-      newQueueItems.forEach(item => {
         setQueue(prev => prev.map(queueItem => 
           queueItem.id === item.id 
-            ? { ...queueItem, status: 'error' as const }
+            ? { ...queueItem, status: 'uploading' as const }
             : queueItem
         ))
-      })
+
+        try {
+          const cloudinaryUrl = await uploadToCloudinary(item)
+          
+          // Update item with Cloudinary URL
+          setQueue(prev => prev.map(queueItem => 
+            queueItem.id === item.id 
+              ? { ...queueItem, status: 'completed' as const, cloudinaryUrl }
+              : queueItem
+          ))
+        } catch (error) {
+          console.error(`Failed to upload ${item.file.name}:`, error)
+          
+          // Update item with error
+          setQueue(prev => prev.map(queueItem => 
+            queueItem.id === item.id 
+              ? { 
+                  ...queueItem, 
+                  status: 'error' as const, 
+                  uploadError: error instanceof Error ? error.message : 'Upload failed'
+                }
+              : queueItem
+          ))
+        }
+      }
+
+      // Now send all successfully uploaded items to Airtable
+      const completedItems = queue.filter(item => item.status === 'completed' && item.cloudinaryUrl)
       
-      alert('Failed to upload images. Please try again.')
+      if (completedItems.length === 0) {
+        setStatus('No items successfully uploaded to process')
+        setIsProcessing(false)
+        return
+      }
+
+      setStatus(`Sending ${completedItems.length} items to Airtable queue...`)
+
+      const queueItemsForAirtable = completedItems.map(item => ({
+        id: item.id,
+        file: item.file,
+        imageUrl: item.cloudinaryUrl!,
+        fileName: item.file.name,
+        fileSize: item.file.size,
+        notes: 'Uploaded via web interface',
+        publishDate: new Date().toISOString().split('T')[0], // Today's date
+        metadata: {
+          uploadDate: new Date().toISOString(),
+          originalFileName: item.file.name,
+          fileType: item.file.type
+        }
+      }))
+
+      const bulkResponse = await fetch('/api/airtable/queue/bulk-add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: storedEmail,
+          queueItems: queueItemsForAirtable
+        })
+      })
+
+      if (!bulkResponse.ok) {
+        throw new Error('Failed to send items to Airtable queue')
+      }
+
+      const bulkResult = await bulkResponse.json()
+      
+      if (bulkResult.errors && bulkResult.errors.length > 0) {
+        console.warn('Some items failed to queue:', bulkResult.errors)
+        setStatus(`Processed ${bulkResult.summary.successful} items, ${bulkResult.summary.failed} failed`)
+      } else {
+        setStatus(`Successfully processed ${bulkResult.summary.successful} items`)
+      }
+
+      // Clear the local queue after successful processing
+      setQueue([])
+      
+    } catch (error) {
+      console.error('Error processing queue:', error)
+      setStatus('Error processing queue: ' + (error instanceof Error ? error.message : 'Unknown error'))
+    } finally {
+      setIsProcessing(false)
     }
   }
 
@@ -266,43 +323,9 @@ export default function Home() {
   }
 
   const selectedCount = queue.filter(item => item.selected).length
-
-  // Airtable queue management
-  const refreshAirtableQueue = useCallback(async () => {
-    if (!storedEmail) return
-
-    try {
-      const response = await fetch('/api/airtable/queue/status', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: storedEmail })
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        // Convert Airtable queue items to local format
-        const localQueueItems: QueueItem[] = data.queueItems.map((item: Record<string, unknown>) => ({
-          id: item.id as string,
-          file: new File([], item.fileName as string), // Create dummy file object
-          status: item.status as 'pending' | 'uploading' | 'completed' | 'error',
-          selected: false,
-          airtableData: item, // Store original Airtable data
-          localPreview: item.imageUrl, // Use imageUrl for local preview
-          fileSize: item.size // Use size from Airtable
-        }))
-        setQueue(localQueueItems)
-      }
-    } catch (error) {
-      console.error('Error refreshing Airtable queue:', error)
-    }
-  }, [storedEmail])
-
-  // Load Airtable queue on component mount
-  useEffect(() => {
-    if (storedEmail) {
-      refreshAirtableQueue()
-    }
-  }, [storedEmail, refreshAirtableQueue])
+  const pendingCount = queue.filter(item => item.status === 'pending').length
+  const completedCount = queue.filter(item => item.status === 'completed').length
+  const errorCount = queue.filter(item => item.status === 'error').length
 
   // Cleanup local preview URLs on component unmount
   useEffect(() => {
@@ -313,7 +336,7 @@ export default function Home() {
         }
       })
     }
-  }, [])
+  }, [queue])
 
   const { getRootProps, getInputProps } = useDropzone({ 
     onDrop,
@@ -419,7 +442,7 @@ export default function Home() {
                 {/* Queue Header */}
                 <div className="p-2 border-b" style={{ borderColor: '#4A5555', backgroundColor: '#8FA8A8' }}>
                   <div className="flex justify-between items-center">
-                    <h3 className="text-sm font-semibold" style={{ color: '#4A5555' }}>Upload Queue</h3>
+                    <h3 className="text-sm font-semibold" style={{ color: '#4A5555' }}>Local Queue</h3>
                     <div className="flex space-x-1">
                       <button
                         onClick={() => setShowQueue(false)}
@@ -432,7 +455,12 @@ export default function Home() {
                       </button>
                     </div>
                   </div>
-                  <p className="text-xs mt-1" style={{ color: '#4A5555' }}>{queue.length} file{queue.length !== 1 ? 's' : ''} in queue</p>
+                  <p className="text-xs mt-1" style={{ color: '#4A5555' }}>
+                    {queue.length} file{queue.length !== 1 ? 's' : ''} in queue
+                    {pendingCount > 0 && ` • ${pendingCount} pending`}
+                    {completedCount > 0 && ` • ${completedCount} ready`}
+                    {errorCount > 0 && ` • ${errorCount} failed`}
+                  </p>
                   
                   {/* Selection controls */}
                   {queue.length > 0 && (
@@ -505,27 +533,11 @@ export default function Home() {
                                   alt={item.file.name}
                                   className="w-full h-full object-cover"
                                 />
-                              ) : item.airtableData?.imageUrl ? (
-                                <img
-                                  src={item.airtableData.imageUrl as string}
-                                  alt={item.file.name}
-                                  className="w-full h-full object-cover"
-                                  onError={(e) => {
-                                    // Fallback to icon if image fails to load
-                                    e.currentTarget.style.display = 'none'
-                                    const icon = e.currentTarget.parentElement?.querySelector('.fallback-icon')
-                                    if (icon) icon.classList.remove('hidden')
-                                  }}
-                                />
                               ) : (
                                 <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                 </svg>
                               )}
-                              {/* Fallback icon for failed loads */}
-                              <svg className="w-6 h-6 text-gray-400 fallback-icon hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                              </svg>
                             </div>
                             
                             {/* File info */}
@@ -542,12 +554,10 @@ export default function Home() {
                                 <p className="text-sm font-medium text-gray-900 truncate">{item.file.name}</p>
                               </div>
                               
-                                                              <div className="flex items-center justify-between">
-                                  <p className="text-xs text-gray-500">
-                                    {item.fileSize ? (item.fileSize / 1024 / 1024).toFixed(2) : 
-                                     item.airtableData?.size ? ((item.airtableData.size as number) / 1024 / 1024).toFixed(2) : 
-                                     '0.00'} MB
-                                  </p>
+                              <div className="flex items-center justify-between">
+                                <p className="text-xs text-gray-500">
+                                  {item.fileSize ? (item.fileSize / 1024 / 1024).toFixed(2) : '0.00'} MB
+                                </p>
                                 <div className="flex items-center space-x-1">
                                   <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                                     item.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
@@ -571,6 +581,11 @@ export default function Home() {
                                   </div>
                                   <p className="text-xs text-gray-500 mt-1">{item.progress}%</p>
                                 </div>
+                              )}
+
+                              {/* Error message */}
+                              {item.status === 'error' && item.uploadError && (
+                                <p className="text-xs text-red-600 mt-1">{item.uploadError}</p>
                               )}
                             </div>
 
@@ -628,7 +643,7 @@ export default function Home() {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                         </svg>
                       </div>
-                      <h3 className="text-lg font-medium text-gray-900 mb-2">Upload Queue</h3>
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">Local Queue</h3>
                       <p className="text-sm text-gray-500">Your uploads will appear here</p>
                       <p className="text-xs text-gray-400 mt-2">Drag files to the drop zone to get started</p>
                     </div>
@@ -640,19 +655,25 @@ export default function Home() {
                   <div className="flex space-x-2">
                     <button
                       onClick={clearQueue}
-                      disabled={queue.length === 0}
+                      disabled={queue.length === 0 || isProcessing}
                       className="flex-1 px-3 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Clear Queue
                     </button>
                     <button
-                      disabled={queue.length === 0}
+                      onClick={processQueue}
+                      disabled={queue.length === 0 || isProcessing || pendingCount === 0}
                       className="flex-1 px-3 py-2 text-sm rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       style={{ backgroundColor: '#4A5555', color: '#D0DADA' }}
                     >
-                      Process Queue
+                      {isProcessing ? 'Processing...' : 'Process Queue'}
                     </button>
                   </div>
+                  {pendingCount > 0 && (
+                    <p className="text-xs text-gray-500 mt-2 text-center">
+                      {pendingCount} item{pendingCount !== 1 ? 's' : ''} ready to process
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -666,7 +687,10 @@ export default function Home() {
                   </svg>
                 </div>
                 <h1 className="text-4xl font-bold mb-4" style={{ color: '#D0DADA' }}>Upload Your Images</h1>
-                <p className="text-xl max-w-2xl mx-auto" style={{ color: '#4A5555' }}>Drag and drop your images to automatically add them to our publishing queue</p>
+                <p className="text-xl max-w-2xl mx-auto" style={{ color: '#4A5555' }}>
+                  Drag and drop your images to add them to your local queue. 
+                  Click &quot;Process Queue&quot; when ready to upload to Airtable.
+                </p>
               </div>
 
               <div

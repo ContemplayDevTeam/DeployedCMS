@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { AirtableBackend } from '@/lib/airtable'
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   console.log('🧪 Airtable test endpoint called')
   
   try {
@@ -110,7 +110,7 @@ export async function GET(request: NextRequest) {
       baseInfo: baseInfo ? {
         accessible: true,
         tableCount: baseInfo.tables?.length || 0,
-        tableNames: baseInfo.tables?.map((t: any) => t.name) || []
+        tableNames: baseInfo.tables?.map((t: { name: string }) => t.name) || []
       } : {
         accessible: false
       },
@@ -125,7 +125,7 @@ export async function GET(request: NextRequest) {
         recordCount: queueTest.records?.length || 0,
         schema: queueSchema ? {
           fieldCount: queueSchema.fields?.length || 0,
-          fieldNames: queueSchema.fields?.map((f: any) => f.name) || []
+          fieldNames: queueSchema.fields?.map((f: { name: string }) => f.name) || []
         } : null
       } : {
         accessible: false

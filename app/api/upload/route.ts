@@ -258,7 +258,7 @@ export async function POST(request: NextRequest) {
           statusText: uploadResponse.statusText,
           error: errorJson
         })
-      } catch (parseError) {
+      } catch {
         // Fall back to text if not JSON
         errorData = await uploadResponse.text()
         console.error('❌ Cloudinary upload failed (text):', {

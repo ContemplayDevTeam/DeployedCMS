@@ -211,6 +211,8 @@ export class AirtableBackend {
     name: string
     size: number
     notes?: string
+    publishDate?: string
+    metadata?: Record<string, unknown>
   }): Promise<QueueItem> {
     console.log('📤 Starting image queue process...')
     
@@ -221,14 +223,21 @@ export class AirtableBackend {
       console.log('📊 Next priority:', priority)
 
       // Prepare the payload - only include fields that exist in the Airtable table
+      const fields: Record<string, unknown> = {
+        'User Email': userEmail,
+        'Image URL': imageData.url,
+        'Upload Date': new Date().toISOString().split('T')[0], // Date-only format (YYYY-MM-DD)
+        'Priority': priority
+      }
+
+      // Add publish date if provided
+      if (imageData.publishDate) {
+        fields['Publish Date'] = imageData.publishDate
+      }
+
       const payload = {
         records: [{
-          fields: {
-            'User Email': userEmail,
-            'Image URL': imageData.url,
-            'Upload Date': new Date().toISOString().split('T')[0], // Date-only format (YYYY-MM-DD)
-            'Priority': priority
-          }
+          fields
         }]
       }
 
@@ -257,6 +266,7 @@ export class AirtableBackend {
         fileSize: imageData.size, // Use the original data since it's not stored in Airtable
         status: 'queued' as const, // Default status since it's not stored in Airtable
         uploadDate: record.fields['Upload Date'] as string,
+        publishDate: record.fields['Publish Date'] as string || imageData.publishDate,
         priority: record.fields['Priority'] as number,
         notes: imageData.notes || '' // Use the original data since it's not stored in Airtable
       }
@@ -283,7 +293,7 @@ export class AirtableBackend {
     try {
       const response = await this.makeRequest(`/Image Queue?filterByFormula=${encodeURIComponent(`{User Email} = '${userEmail}'`)}&sort[0][field]=Priority&sort[0][direction]=asc`)
       
-      return response.records.map(record => ({
+      return response.records.map((record: { id: string; fields: Record<string, unknown> }) => ({
         id: record.id,
         userEmail: record.fields['User Email'] as string,
         imageUrl: record.fields['Image URL'] as string,
@@ -301,9 +311,9 @@ export class AirtableBackend {
     }
   }
 
-  async updateQueueItemStatus(recordId: string, status: 'queued' | 'processing' | 'published' | 'failed', notes?: string): Promise<boolean> {
+  async updateQueueItemStatus(recordId: string, status: 'queued' | 'processing' | 'published' | 'failed'): Promise<boolean> {
     try {
-      const updateData: Record<string, any> = {}
+      const updateData: Record<string, unknown> = {}
 
       if (status === 'published') {
         updateData['Publish Date'] = new Date().toISOString().split('T')[0] // Date-only format (YYYY-MM-DD)
@@ -382,7 +392,7 @@ export class AirtableBackend {
   }
 
   // Get table schema to check field names
-  async getTableSchema(tableName: string): Promise<any> {
+  async getTableSchema(tableName: string): Promise<{ name: string; fields: Array<{ name: string; type: string }> }> {
     try {
       console.log(`🔍 Getting schema for table: ${tableName}`)
       const response = await fetch(`https://api.airtable.com/v0/meta/bases/${this.baseId}/tables`, {
@@ -398,14 +408,14 @@ export class AirtableBackend {
       }
 
       const data = await response.json()
-      const table = data.tables.find((t: any) => t.name === tableName)
+      const table = data.tables.find((t: { name: string }) => t.name === tableName)
       
       if (!table) {
         throw new Error(`Table '${tableName}' not found`)
       }
 
       console.log(`📋 Table schema for '${tableName}':`)
-      table.fields.forEach((field: any) => {
+      table.fields.forEach((field: { name: string; type: string }) => {
         console.log(`   - ${field.name} (${field.type})`)
       })
 

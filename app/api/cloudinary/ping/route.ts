@@ -80,11 +80,11 @@ export async function GET() {
       }, { status: 500 });
     }
 
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("🔥 Cloudinary test failed:", err);
     return NextResponse.json({ 
-      error: err.message,
-      stack: err.stack,
+      error: err instanceof Error ? err.message : 'Unknown error',
+      stack: err instanceof Error ? err.stack : undefined,
       timestamp: new Date().toISOString()
     }, { status: 500 });
   }

@@ -59,9 +59,9 @@ export async function POST(request: NextRequest) {
       message: 'Login successful'
     })
 
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("💥 LOGIN ERROR:", err);
-    return new Response(JSON.stringify({ error: err.message }), {
+    return new Response(JSON.stringify({ error: err instanceof Error ? err.message : 'Unknown error' }), {
       status: 500,
       headers: { "Content-Type": "application/json" },
     });
