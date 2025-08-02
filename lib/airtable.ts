@@ -271,8 +271,5 @@ export class AirtableBackend {
   }
 }
 
-// Create singleton instance
-export const airtableBackend = new AirtableBackend(
-  process.env.AIRTABLE_API_KEY || '',
-  process.env.AIRTABLE_BASE_ID || ''
-) 
+// Note: Don't create singleton instance here as it causes build-time errors
+// Create instances in API routes with proper environment variable checks 

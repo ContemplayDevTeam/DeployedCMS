@@ -9,10 +9,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Email is required' }, { status: 400 })
     }
 
-    const airtable = new AirtableBackend(
-      process.env.AIRTABLE_API_KEY || '',
-      process.env.AIRTABLE_BASE_ID || ''
-    )
+    const apiKey = process.env.AIRTABLE_API_KEY
+    const baseId = process.env.AIRTABLE_BASE_ID
+
+    if (!apiKey || !baseId) {
+      return NextResponse.json(
+        { error: 'Airtable configuration missing' },
+        { status: 500 }
+      )
+    }
+
+    const airtable = new AirtableBackend(apiKey, baseId)
 
     // Check if user exists, if not create them
     let user = await airtable.getUser(email)
