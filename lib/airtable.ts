@@ -24,20 +24,31 @@ interface QueueItem {
 }
 
 export class AirtableBackend {
-  private base: Airtable.Base
+  private base: Airtable.Base | null = null
   private apiKey: string
   private baseId: string
 
   constructor(apiKey: string, baseId: string) {
     this.apiKey = apiKey
     this.baseId = baseId
-    this.base = new Airtable({ apiKey }).base(baseId)
+    
+    // Only create Airtable connection if we're not in build time
+    if (typeof window !== 'undefined' || process.env.NODE_ENV !== 'production') {
+      this.base = new Airtable({ apiKey }).base(baseId)
+    }
+  }
+
+  private getBase(): Airtable.Base {
+    if (!this.base) {
+      throw new Error('Airtable connection not initialized')
+    }
+    return this.base
   }
 
   // User management
   async createUser(email: string): Promise<User> {
     try {
-      const record = await this.base('Users').create({
+      const record = await this.getBase()('Users').create({
         'Email': email,
         'Is Verified': false,
         'Is Paid': false,
@@ -63,7 +74,7 @@ export class AirtableBackend {
 
   async getUser(email: string): Promise<User | null> {
     try {
-      const records = await this.base('Users').select({
+      const records = await this.getBase()('Users').select({
         filterByFormula: `{Email} = '${email}'`
       }).firstPage()
 
@@ -94,7 +105,7 @@ export class AirtableBackend {
         return false
       }
 
-      await this.base('Users').update(user.id!, {
+      await this.getBase()('Users').update(user.id!, {
         'Is Verified': true,
         'Last Login': new Date().toISOString()
       })
@@ -113,7 +124,7 @@ export class AirtableBackend {
         return false
       }
 
-      await this.base('Users').update(user.id!, {
+      await this.getBase()('Users').update(user.id!, {
         'Is Paid': isPaid,
         'Subscription Tier': tier,
         'Last Login': new Date().toISOString()
@@ -137,7 +148,7 @@ export class AirtableBackend {
       // Get next priority number for this user
       const priority = await this.getNextPriority(userEmail)
 
-      const record = await this.base('Image Queue').create({
+      const record = await this.getBase()('Image Queue').create({
         'User Email': userEmail,
         'Image URL': imageData.url,
         'File Name': imageData.name,
@@ -167,7 +178,7 @@ export class AirtableBackend {
 
   async getQueueStatus(userEmail: string): Promise<QueueItem[]> {
     try {
-      const records = await this.base('Image Queue').select({
+      const records = await this.getBase()('Image Queue').select({
         filterByFormula: `{User Email} = '${userEmail}'`,
         sort: [{ field: 'Priority', direction: 'asc' }]
       }).firstPage()
@@ -204,7 +215,7 @@ export class AirtableBackend {
         updateData['Notes'] = notes
       }
 
-      await this.base('Image Queue').update(recordId, updateData)
+      await this.getBase()('Image Queue').update(recordId, updateData)
       return true
     } catch (error) {
       console.error('Error updating queue item status:', error)
@@ -214,7 +225,7 @@ export class AirtableBackend {
 
   async deleteQueueItem(recordId: string): Promise<boolean> {
     try {
-      await this.base('Image Queue').destroy(recordId)
+      await this.getBase()('Image Queue').destroy(recordId)
       return true
     } catch (error) {
       console.error('Error deleting queue item:', error)
@@ -229,7 +240,7 @@ export class AirtableBackend {
         fields: { 'Priority': index + 1 }
       }))
 
-      await this.base('Image Queue').update(updates)
+      await this.getBase()('Image Queue').update(updates)
       return true
     } catch (error) {
       console.error('Error reordering queue:', error)
@@ -239,7 +250,7 @@ export class AirtableBackend {
 
   private async getNextPriority(userEmail: string): Promise<number> {
     try {
-      const records = await this.base('Image Queue').select({
+      const records = await this.getBase()('Image Queue').select({
         filterByFormula: `{User Email} = '${userEmail}'`,
         sort: [{ field: 'Priority', direction: 'desc' }],
         maxRecords: 1
