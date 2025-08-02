@@ -192,7 +192,7 @@ export class AirtableBackend {
 
   async updateQueueItemStatus(recordId: string, status: 'queued' | 'processing' | 'published' | 'failed', notes?: string): Promise<boolean> {
     try {
-      const updateData: any = {
+      const updateData: Record<string, string | number> = {
         'Status': status
       }
 

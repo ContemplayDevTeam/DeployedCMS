@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import Airtable from 'airtable'
 
 export async function GET() {
   try {
-    const apiKey = process.env.AIRTABLE_API_KEY || 'pat7OlfrIjGxb9zT4.70dffbf37f8a9ff8e823b9d38fb01890e335cc5ee3eb2ce4e5e59a7e067619e0'
-    const baseId = process.env.AIRTABLE_BASE_ID || '4ZTtBg4oTHLUz'
+    const apiKey = process.env.AIRTABLE_API_KEY
+    const baseId = process.env.AIRTABLE_BASE_ID
 
     if (!apiKey || !baseId) {
       return NextResponse.json({

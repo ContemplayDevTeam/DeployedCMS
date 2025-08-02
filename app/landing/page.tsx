@@ -6,7 +6,6 @@ import Link from 'next/link'
 
 export default function Landing() {
   const router = useRouter()
-  const [mode, setMode] = useState<'login' | 'signup'>('login')
   const [email, setEmail] = useState('')
   const [isLoading, setIsLoading] = useState(false)
 
@@ -42,7 +41,7 @@ export default function Landing() {
     {
       icon: "⚡",
       title: "Quick Publishing",
-      description: "We'll publish your content professionally and efficiently."
+      description: "We&apos;ll publish your content professionally and efficiently."
     },
     {
       icon: "📋",
@@ -102,7 +101,7 @@ export default function Landing() {
                </h1>
             
                                                    <p className="text-xl mb-8 max-w-3xl mx-auto leading-relaxed" style={{ color: '#6B7280' }}>
-                Upload your product images to our publishing queue. We'll handle the rest and get your content published quickly and professionally.
+                Upload your product images to our publishing queue. We&apos;ll handle the rest and get your content published quickly and professionally.
               </p>
 
                          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">

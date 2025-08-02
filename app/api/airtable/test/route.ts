@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { AirtableBackend } from '@/lib/airtable'
 
 export async function GET() {
@@ -20,7 +20,7 @@ export async function GET() {
      try {
        // This will test if we can connect to the base and access tables
        const usersTable = airtable['base']('Users')
-       const records = await usersTable.select({ maxRecords: 1 }).firstPage()
+       await usersTable.select({ maxRecords: 1 }).firstPage()
        
        return NextResponse.json({
          success: true,

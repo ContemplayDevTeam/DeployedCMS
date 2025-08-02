@@ -1,8 +1,7 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useDropzone } from 'react-dropzone'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
 interface QueueItem {
@@ -11,11 +10,10 @@ interface QueueItem {
   status: 'pending' | 'uploading' | 'completed' | 'error'
   progress?: number
   selected?: boolean
-  airtableData?: any // Store original Airtable data
+  airtableData?: Record<string, unknown> // Store original Airtable data
 }
 
 export default function Home() {
-  const router = useRouter()
   const [email, setEmail] = useState<string>('')
   const [storedEmail, setStoredEmail] = useState<string>('')
   const [userAction, setUserAction] = useState<string>('')
@@ -193,7 +191,7 @@ export default function Home() {
   const selectedCount = queue.filter(item => item.selected).length
 
   // Airtable queue management
-  const refreshAirtableQueue = async () => {
+  const refreshAirtableQueue = useCallback(async () => {
     if (!storedEmail) return
 
     try {
@@ -206,10 +204,10 @@ export default function Home() {
       if (response.ok) {
         const data = await response.json()
         // Convert Airtable queue items to local format
-        const localQueueItems: QueueItem[] = data.queueItems.map((item: any) => ({
-          id: item.id,
-          file: new File([], item.fileName), // Create dummy file object
-          status: item.status,
+        const localQueueItems: QueueItem[] = data.queueItems.map((item: Record<string, unknown>) => ({
+          id: item.id as string,
+          file: new File([], item.fileName as string), // Create dummy file object
+          status: item.status as 'pending' | 'uploading' | 'completed' | 'error',
           selected: false,
           airtableData: item // Store original Airtable data
         }))
@@ -218,14 +216,14 @@ export default function Home() {
     } catch (error) {
       console.error('Error refreshing Airtable queue:', error)
     }
-  }
+  }, [storedEmail])
 
   // Load Airtable queue on component mount
   useEffect(() => {
     if (storedEmail) {
       refreshAirtableQueue()
     }
-  }, [storedEmail])
+  }, [storedEmail, refreshAirtableQueue])
 
   const { getRootProps, getInputProps } = useDropzone({ 
     onDrop,
