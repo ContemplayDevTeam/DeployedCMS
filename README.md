@@ -1,4 +1,4 @@
-# AirTable Queue for Customers
+# Airtable Queue for Customers
 
 A professional image upload and queue management system with Airtable backend integration.
 
@@ -14,7 +14,7 @@ A professional image upload and queue management system with Airtable backend in
 
 ## Tech Stack
 
-- **Frontend**: Next.js 14, React, TypeScript
+- **Frontend**: Next.js 15, React 19, TypeScript
 - **Styling**: Tailwind CSS, Google Fonts (Inter + Poppins)
 - **Backend**: Airtable API
 - **File Upload**: react-dropzone
@@ -32,8 +32,8 @@ A professional image upload and queue management system with Airtable backend in
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/bvryn7/AirTableQueueforCustomers.git
-cd AirTableQueueforCustomers
+git clone https://github.com/bvryn7/AirtableQueueForCustomers.git
+cd AirtableQueueForCustomers
 ```
 
 2. Install dependencies:
