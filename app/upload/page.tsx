@@ -76,23 +76,34 @@ export default function Home() {
       return
     }
 
-    setStatus('Uploading images to Airtable queue...')
+    setStatus('Uploading images to Cloudinary...')
     
     try {
-      // For now, we'll simulate image upload to cloud storage
-      // In a real implementation, you'd upload to S3, Cloudinary, etc.
+      // Upload images to Cloudinary first, then queue to Airtable
       const uploadPromises = acceptedFiles.map(async (file) => {
-        // Simulate cloud storage upload
-        const imageUrl = `https://example.com/uploads/${file.name}`
+        // Upload to Cloudinary
+        const formData = new FormData()
+        formData.append('file', file)
         
-        // Queue to Airtable
-        const response = await fetch('/api/airtable/queue/add', {
+        const uploadResponse = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData
+        })
+
+        if (!uploadResponse.ok) {
+          throw new Error(`Failed to upload ${file.name} to Cloudinary`)
+        }
+
+        const uploadResult = await uploadResponse.json()
+        
+        // Queue to Airtable with real image URL
+        const queueResponse = await fetch('/api/airtable/queue/add', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             email: storedEmail,
             imageData: {
-              url: imageUrl,
+              url: uploadResult.imageUrl,
               name: file.name,
               size: file.size,
               notes: 'Uploaded via web interface'
@@ -100,22 +111,22 @@ export default function Home() {
           })
         })
 
-        if (!response.ok) {
+        if (!queueResponse.ok) {
           throw new Error(`Failed to queue ${file.name}`)
         }
 
-        return await response.json()
+        return await queueResponse.json()
       })
 
       await Promise.all(uploadPromises)
-      setStatus(`${acceptedFiles.length} file${acceptedFiles.length !== 1 ? 's' : ''} successfully queued to Airtable`)
+      setStatus(`${acceptedFiles.length} file${acceptedFiles.length !== 1 ? 's' : ''} successfully uploaded and queued`)
       
       // Refresh queue status
       await refreshAirtableQueue()
     } catch (error) {
-      console.error('Error uploading to Airtable:', error)
-      setStatus('Error uploading to Airtable queue')
-      alert('Failed to upload images to Airtable. Please try again.')
+      console.error('Error uploading images:', error)
+      setStatus('Error uploading images')
+      alert('Failed to upload images. Please try again.')
     }
   }
 

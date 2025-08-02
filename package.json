@@ -10,6 +10,8 @@
   },
   "dependencies": {
     "airtable": "^0.12.2",
+    "cloudinary": "^2.7.0",
+    "multer": "^2.0.2",
     "next": "15.4.5",
     "react": "19.1.0",
     "react-dom": "19.1.0",
