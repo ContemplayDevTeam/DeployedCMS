@@ -3,6 +3,9 @@ import Airtable from 'airtable'
 interface User {
   id?: string
   email: string
+  password?: string
+  firstName?: string
+  lastName?: string
   isVerified: boolean
   isPaid: boolean
   subscriptionTier: 'free' | 'basic' | 'pro'
@@ -46,11 +49,20 @@ export class AirtableBackend {
   }
 
   // User management
-  async createUser(email: string): Promise<User> {
+  async createUser(userData: {
+    email: string
+    password: string
+    firstName: string
+    lastName: string
+    isVerified?: boolean
+  }): Promise<User> {
     try {
       const record = await this.getBase()('Users').create({
-        'Email': email,
-        'Is Verified': false,
+        'Email': userData.email,
+        'Password': userData.password,
+        'First Name': userData.firstName,
+        'Last Name': userData.lastName,
+        'Is Verified': userData.isVerified || false,
         'Is Paid': false,
         'Subscription Tier': 'free',
         'Created Date': new Date().toISOString(),
@@ -60,6 +72,8 @@ export class AirtableBackend {
       return {
         id: record.id,
         email: record.get('Email') as string,
+        firstName: record.get('First Name') as string,
+        lastName: record.get('Last Name') as string,
         isVerified: record.get('Is Verified') as boolean,
         isPaid: record.get('Is Paid') as boolean,
         subscriptionTier: record.get('Subscription Tier') as 'free' | 'basic' | 'pro',
@@ -69,6 +83,35 @@ export class AirtableBackend {
     } catch (error) {
       console.error('Error creating user:', error)
       throw new Error('Failed to create user')
+    }
+  }
+
+  async getUserByEmail(email: string): Promise<User | null> {
+    try {
+      const records = await this.getBase()('Users').select({
+        filterByFormula: `{Email} = '${email}'`
+      }).firstPage()
+
+      if (records.length === 0) {
+        return null
+      }
+
+      const record = records[0]
+      return {
+        id: record.id,
+        email: record.get('Email') as string,
+        password: record.get('Password') as string,
+        firstName: record.get('First Name') as string,
+        lastName: record.get('Last Name') as string,
+        isVerified: record.get('Is Verified') as boolean,
+        isPaid: record.get('Is Paid') as boolean,
+        subscriptionTier: record.get('Subscription Tier') as 'free' | 'basic' | 'pro',
+        createdDate: record.get('Created Date') as string,
+        lastLogin: record.get('Last Login') as string
+      }
+    } catch (error) {
+      console.error('Error getting user by email:', error)
+      throw new Error('Failed to get user')
     }
   }
 

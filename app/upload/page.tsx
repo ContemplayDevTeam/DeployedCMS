@@ -30,7 +30,10 @@ export default function Home() {
     const action = localStorage.getItem('uploader_action')
     const timestamp = localStorage.getItem('uploader_timestamp')
     
-    if (saved) setStoredEmail(saved)
+    if (saved) {
+      setStoredEmail(saved)
+      setEmail(saved) // Pre-fill the email input
+    }
     if (action) setUserAction(action)
     if (timestamp) {
       const date = new Date(timestamp)

@@ -13,15 +13,16 @@ export default function Landing() {
     if (!email.trim()) return
     
     setIsLoading(true)
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000))
     
-    // Store user data
+    // Store email for the auth pages
     localStorage.setItem('uploader_email', email)
-    localStorage.setItem('uploader_action', action)
-    localStorage.setItem('uploader_timestamp', new Date().toISOString())
     
-    router.push('/upload')
+    // Redirect to appropriate auth page
+    if (action === 'login') {
+      router.push('/login')
+    } else {
+      router.push('/signup')
+    }
   }
 
   // Load saved email on component mount
@@ -72,14 +73,14 @@ export default function Landing() {
            </div>
           <div className="flex items-center space-x-4">
             <Link 
-              href="/upload" 
+              href="/login" 
               className="hidden sm:inline-flex items-center px-4 py-2 text-sm font-medium transition-colors"
               style={{ color: '#D0DADA' }}
             >
               Sign In
             </Link>
             <Link 
-              href="/upload" 
+              href="/signup" 
               className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-colors"
               style={{ color: '#D0DADA', backgroundColor: '#4A5555' }}
             >
@@ -181,7 +182,7 @@ export default function Landing() {
            </p>
                      <div className="flex flex-col sm:flex-row gap-4 justify-center">
              <button
-               onClick={() => router.push('/upload')}
+               onClick={() => router.push('/signup')}
                className="px-8 py-4 font-semibold rounded-lg transition-colors btn-hover"
                style={{ backgroundColor: '#D0DADA', color: '#4A5555' }}
              >
