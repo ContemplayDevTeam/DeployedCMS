@@ -1,8 +1,10 @@
+
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
 import { useDropzone } from 'react-dropzone'
 import Link from 'next/link'
+
 
 interface QueueItem {
   id: string
@@ -149,19 +151,11 @@ export default function Home() {
 
       if (response.ok) {
         setAirtableQueueItems(updatedItems)
-        // Refresh the queue to get the updated order from Airtable
-        setTimeout(() => {
-          fetchAirtableQueueItems()
-        }, 1000)
       } else {
         console.error('Failed to reorder Airtable queue items')
-        // Refresh queue to restore correct order
-        await fetchAirtableQueueItems()
       }
     } catch (error) {
       console.error('Error reordering Airtable queue items:', error)
-      // Refresh queue to restore correct order
-      await fetchAirtableQueueItems()
     } finally {
       setIsReorderingAirtable(false)
     }
