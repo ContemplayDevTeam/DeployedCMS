@@ -96,13 +96,30 @@ export default function Home() {
     }
   }
 
-  const deleteAirtableQueueItem = (itemId: string) => {
-    console.log('🗑️ Removing Airtable queue item from frontend display:', itemId)
-    
-    // Only remove from frontend state - don't actually delete from Airtable
-    setAirtableQueueItems(prev => prev.filter(item => item.id !== itemId))
-    
-    console.log('✅ Successfully removed item from frontend display')
+  const deleteAirtableQueueItem = async (itemId: string) => {
+    console.log('🗑️ Deleting Airtable queue item:', itemId)
+
+    try {
+      const response = await fetch('/api/airtable/queue/delete', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ recordId: itemId }),
+      })
+
+      if (response.ok) {
+        // Remove from frontend state after successful deletion
+        setAirtableQueueItems(prev => prev.filter(item => item.id !== itemId))
+        console.log('✅ Successfully deleted item from Airtable and frontend')
+      } else {
+        console.error('❌ Failed to delete item from Airtable')
+        alert('Failed to delete item from queue')
+      }
+    } catch (error) {
+      console.error('❌ Error deleting item:', error)
+      alert('Error deleting item from queue')
+    }
   }
 
   const moveAirtableItem = async (fromIndex: number, toIndex: number) => {
@@ -132,11 +149,19 @@ export default function Home() {
 
       if (response.ok) {
         setAirtableQueueItems(updatedItems)
+        // Refresh the queue to get the updated order from Airtable
+        setTimeout(() => {
+          fetchAirtableQueueItems()
+        }, 1000)
       } else {
         console.error('Failed to reorder Airtable queue items')
+        // Refresh queue to restore correct order
+        await fetchAirtableQueueItems()
       }
     } catch (error) {
       console.error('Error reordering Airtable queue items:', error)
+      // Refresh queue to restore correct order
+      await fetchAirtableQueueItems()
     } finally {
       setIsReorderingAirtable(false)
     }
@@ -884,17 +909,38 @@ export default function Home() {
               {/* Airtable Queue Section */}
               <div className="mt-12">
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-bold" style={{ color: '#4A5555' }}>Your Queued Images</h2>
-                  <button
-                    onClick={() => setShowAirtableQueue(!showAirtableQueue)}
-                    className="flex items-center space-x-2 px-3 py-2 text-sm rounded-lg transition-colors"
-                    style={{ backgroundColor: '#8FA8A8', color: '#4A5555' }}
-                  >
-                    <span>{showAirtableQueue ? 'Hide' : 'Show'}</span>
-                    <svg className={`w-4 h-4 transition-transform ${showAirtableQueue ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </button>
+                  <div className="flex items-center space-x-4">
+                    <h2 className="text-2xl font-bold" style={{ color: '#4A5555' }}>Your Queued Images</h2>
+                    {airtableQueueItems.length > 0 && (
+                      <span className="px-2 py-1 text-sm rounded-full" style={{ backgroundColor: '#8FA8A8', color: '#4A5555' }}>
+                        {airtableQueueItems.length} items
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={fetchAirtableQueueItems}
+                      disabled={isLoadingAirtableQueue}
+                      className="flex items-center space-x-2 px-3 py-2 text-sm rounded-lg transition-colors disabled:opacity-50"
+                      style={{ backgroundColor: '#8FA8A8', color: '#4A5555' }}
+                      title="Refresh queue"
+                    >
+                      <svg className={`w-4 h-4 ${isLoadingAirtableQueue ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                      <span>Refresh</span>
+                    </button>
+                    <button
+                      onClick={() => setShowAirtableQueue(!showAirtableQueue)}
+                      className="flex items-center space-x-2 px-3 py-2 text-sm rounded-lg transition-colors"
+                      style={{ backgroundColor: '#8FA8A8', color: '#4A5555' }}
+                    >
+                      <span>{showAirtableQueue ? 'Hide' : 'Show'}</span>
+                      <svg className={`w-4 h-4 transition-transform ${showAirtableQueue ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
 
                 {showAirtableQueue && (

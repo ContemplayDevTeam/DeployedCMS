@@ -299,7 +299,7 @@ export class AirtableBackend {
 
   async getQueueStatus(userEmail: string): Promise<QueueItem[]> {
     try {
-      const response = await this.makeRequest(`/${this.tableIds.queue}?filterByFormula=${encodeURIComponent(`{User Email} = '${userEmail}'`)}`)
+      const response = await this.makeRequest(`/${this.tableIds.queue}?filterByFormula=${encodeURIComponent(`{User Email} = '${userEmail}'`)}&sort[0][field]=Publish Date&sort[0][direction]=asc`)
       
       return response.records.map((record: { id: string; fields: Record<string, unknown> }) => ({
         id: record.id,
@@ -368,7 +368,72 @@ export class AirtableBackend {
     }
   }
 
-  // Priority-related methods removed since Priority is not in the field list
+  async reorderQueue(userEmail: string, newOrder: string[]): Promise<boolean> {
+    try {
+      console.log('🔄 Reordering queue for user:', userEmail)
+      console.log('📋 New order:', newOrder)
+
+      // First, verify all records exist by fetching the current queue
+      console.log('🔍 Verifying records exist before reordering...')
+      const currentQueue = await this.getQueueStatus(userEmail)
+      const existingIds = currentQueue.map(item => item.id)
+
+      // Filter out any record IDs that don't exist anymore
+      const validIds = newOrder.filter(id => existingIds.includes(id))
+      const invalidIds = newOrder.filter(id => !existingIds.includes(id))
+
+      if (invalidIds.length > 0) {
+        console.warn('⚠️ Some record IDs no longer exist:', invalidIds)
+      }
+
+      if (validIds.length === 0) {
+        console.log('❌ No valid records to reorder')
+        return false
+      }
+
+      console.log(`✅ Found ${validIds.length} valid records to reorder`)
+
+      // Since we don't have a Priority field, we'll use the Upload Date and Publish Date
+      // to maintain order. We'll update the Publish Date with timestamps that reflect the desired order.
+
+      const baseDate = new Date()
+      const updates = validIds.map((recordId, index) => ({
+        id: recordId,
+        fields: {
+          // Set Publish Date to maintain order - each item gets a date that's index hours later
+          'Publish Date': new Date(baseDate.getTime() + (index * 60 * 60 * 1000)).toISOString().split('T')[0]
+        }
+      }))
+
+      console.log('📤 Updating records with new order...')
+
+      // Update records in batches (Airtable allows max 10 records per request)
+      const batchSize = 10
+      for (let i = 0; i < updates.length; i += batchSize) {
+        const batch = updates.slice(i, i + batchSize)
+
+        try {
+          await this.makeRequest(`/${this.tableIds.queue}`, {
+            method: 'PATCH',
+            body: JSON.stringify({
+              records: batch
+            })
+          })
+
+          console.log(`✅ Updated batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(updates.length / batchSize)}`)
+        } catch (batchError) {
+          console.error(`❌ Failed to update batch ${Math.floor(i / batchSize) + 1}:`, batchError)
+          // Continue with other batches instead of failing completely
+        }
+      }
+
+      console.log('🎉 Queue reordering completed')
+      return true
+    } catch (error) {
+      console.error('Error reordering queue:', error)
+      return false
+    }
+  }
 
   // Get table schema to check field names
   async getTableSchema(tableName: string): Promise<{ name: string; fields: Array<{ name: string; type: string }> }> {
