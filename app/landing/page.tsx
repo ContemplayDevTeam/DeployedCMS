@@ -65,11 +65,11 @@ export default function Landing() {
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#8FA8A8' }}>
       {/* Navbar */}
-      <header className="backdrop-blur-sm shadow-sm sticky top-0 z-50 border-b" style={{ backgroundColor: '#8FA8A8', borderColor: '#4A5555' }}>
+      <header className="backdrop-blur-sm shadow-sm sticky top-0 z-50 border-b" style={{ backgroundColor: '#e2775c', borderColor: '#f05d43' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
                       <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#4A5555' }}>
-                <span className="font-bold text-sm" style={{ color: '#D0DADA' }}>C</span>
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#42504d' }}>
+                <span className="font-bold text-sm" style={{ color: '#FFFFFF' }}>C</span>
               </div>
 
             </div>
@@ -84,7 +84,7 @@ export default function Landing() {
                   <Link 
                     href="/upload" 
                     className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-colors"
-                    style={{ color: '#D0DADA', backgroundColor: '#4A5555' }}
+                    style={{ color: '#FFFFFF', backgroundColor: '#f05d43' }}
                   >
                     Upload
                   </Link>
@@ -94,14 +94,14 @@ export default function Landing() {
                  <Link 
                    href="/login" 
                    className="hidden sm:inline-flex items-center px-4 py-2 text-sm font-medium transition-colors"
-                   style={{ color: '#D0DADA' }}
+                   style={{ color: '#42504d' }}
                  >
                    Sign In
                  </Link>
                  <Link 
                    href="/signup" 
                    className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-colors"
-                   style={{ color: '#D0DADA', backgroundColor: '#4A5555' }}
+                   style={{ color: '#FFFFFF', backgroundColor: '#f05d43' }}
                  >
                    Get Started
                  </Link>
@@ -119,7 +119,7 @@ export default function Landing() {
             
                                                                                                        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-6 leading-tight text-balance" style={{ color: '#4A5555' }}>
                  Upload, Queue, and
-                 <span style={{ color: '#8FA8A8' }}> Create</span>
+                 <span style={{ color: '#f05d43' }}> Create</span>
                </h1>
             
                                                    <p className="text-xl mb-8 max-w-3xl mx-auto leading-relaxed" style={{ color: '#6B7280' }}>
@@ -132,7 +132,7 @@ export default function Landing() {
                     type="email"
                     placeholder="Enter your email address"
                     className="w-full px-6 py-4 text-lg border rounded-xl focus:ring-2 focus:border-transparent transition-all mb-4"
-                    style={{ borderColor: '#8FA8A8', backgroundColor: '#F9FAFB', color: '#4A5555' }}
+                    style={{ borderColor: '#e2775c', backgroundColor: '#F9FAFB', color: '#42504d' }}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                   />
@@ -141,7 +141,7 @@ export default function Landing() {
                        onClick={() => handleContinue('login')}
                        disabled={isLoading || !email.trim()}
                        className="flex-1 px-6 py-3 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all btn-hover"
-                       style={{ backgroundColor: '#8FA8A8', color: '#FFFFFF' }}
+                       style={{ backgroundColor: '#f05d43', color: '#FFFFFF' }}
                      >
                        {isLoading ? (
                          <div className="w-5 h-5 border-2 border-transparent rounded-full spinner mx-auto" style={{ borderColor: '#FFFFFF', borderTopColor: 'transparent' }}></div>
@@ -153,7 +153,7 @@ export default function Landing() {
                        onClick={() => handleContinue('signup')}
                        disabled={isLoading || !email.trim()}
                        className="flex-1 px-6 py-3 border-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all btn-hover"
-                       style={{ borderColor: '#8FA8A8', color: '#8FA8A8', backgroundColor: '#FFFFFF' }}
+                       style={{ borderColor: '#e2775c', color: '#e2775c', backgroundColor: '#FFFFFF' }}
                      >
                        Sign Up
                      </button>
@@ -169,10 +169,10 @@ export default function Landing() {
       
 
       {/* Features Section */}
-      <section className="py-20" style={{ backgroundColor: '#8FA8A8' }}>
+      <section className="py-20" style={{ backgroundColor: '#939b7e' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                      <div className="text-center mb-16">
-             <h2 className="text-3xl sm:text-4xl font-bold mb-4" style={{ color: '#D0DADA' }}>
+             <h2 className="text-3xl sm:text-4xl font-bold mb-4" style={{ color: '#FFFFFF' }}>
                Simple and efficient publishing workflow
              </h2>
              <p className="text-xl max-w-2xl mx-auto" style={{ color: '#4A5555' }}>

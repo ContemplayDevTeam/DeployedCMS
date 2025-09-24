@@ -1,7 +1,7 @@
 
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useDropzone } from 'react-dropzone'
 import Link from 'next/link'
 
@@ -65,14 +65,7 @@ export default function Home() {
     }
   }, [])
 
-  // Fetch Airtable queue items when user is logged in
-  useEffect(() => {
-    if (storedEmail) {
-      fetchAirtableQueueItems()
-    }
-  }, [storedEmail])
-
-  const fetchAirtableQueueItems = async () => {
+  const fetchAirtableQueueItems = useCallback(async () => {
     if (!storedEmail) return
     
     setIsLoadingAirtableQueue(true)
@@ -96,7 +89,14 @@ export default function Home() {
     } finally {
       setIsLoadingAirtableQueue(false)
     }
-  }
+  }, [storedEmail])
+
+  // Fetch Airtable queue items when user is logged in
+  useEffect(() => {
+    if (storedEmail) {
+      fetchAirtableQueueItems()
+    }
+  }, [storedEmail, fetchAirtableQueueItems])
 
   const deleteAirtableQueueItem = async (itemId: string) => {
     console.log('🗑️ Deleting Airtable queue item:', itemId)
@@ -403,7 +403,7 @@ export default function Home() {
       // Build sanitized payload for Airtable using only fields that exist in the table
       const publishDate = new Date().toISOString().split('T')[0]
       
-      const queueItemsForAirtable = completedUploads.map(({ item, cloudinaryUrl }, index) => ({
+      const queueItemsForAirtable = completedUploads.map(({ cloudinaryUrl }) => ({
         // Use exact Airtable field names with proper casing and types
         "User Email": storedEmail, // Email field
         "Image URL": cloudinaryUrl, // Link field
@@ -443,7 +443,7 @@ export default function Home() {
         console.warn('Some items failed to queue:', bulkResult.errors)
         
         // Show specific error details to user
-        const errorDetails = bulkResult.errors.map((error: any, index: number) => 
+        const errorDetails = bulkResult.errors.map((error: { message?: string }, index: number) => 
           `Item ${index + 1}: ${error.message || 'Unknown error'}`
         ).join(', ')
         
@@ -477,26 +477,7 @@ export default function Home() {
     })
   }
 
-  const removeSelectedFromQueue = () => {
-    setQueue(prev => {
-      // Clean up local preview URLs for selected items
-      prev.forEach(item => {
-        if (item.selected && item.localPreview && item.localPreview.startsWith('blob:')) {
-          URL.revokeObjectURL(item.localPreview)
-        }
-      })
-      return prev.filter(item => !item.selected)
-    })
-    setIsSelectMode(false)
-  }
 
-  const toggleSelectMode = () => {
-    setIsSelectMode(!isSelectMode)
-    if (isSelectMode) {
-      // Clear all selections when exiting select mode
-      setQueue(prev => prev.map(item => ({ ...item, selected: false })))
-    }
-  }
 
   const toggleItemSelection = (id: string) => {
     setQueue(prev => prev.map(item => 
@@ -504,13 +485,7 @@ export default function Home() {
     ))
   }
 
-  const selectAll = () => {
-    setQueue(prev => prev.map(item => ({ ...item, selected: true })))
-  }
 
-  const deselectAll = () => {
-    setQueue(prev => prev.map(item => ({ ...item, selected: false })))
-  }
 
   const moveInQueue = (fromIndex: number, toIndex: number) => {
     setQueue(prev => {
@@ -558,10 +533,7 @@ export default function Home() {
     setIsSelectMode(false)
   }
 
-  const selectedCount = queue.filter(item => item.selected).length
   const pendingCount = queue.filter(item => item.status === 'pending').length
-  const completedCount = queue.filter(item => item.status === 'completed').length
-  const errorCount = queue.filter(item => item.status === 'error').length
 
   // Cleanup local preview URLs on component unmount
   useEffect(() => {
@@ -585,7 +557,7 @@ export default function Home() {
   return (
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#8FA8A8' }}>
       {/* Header */}
-      <header className="shadow-sm border-b z-50" style={{ backgroundColor: '#8FA8A8', borderColor: '#4A5555' }}>
+      <header className="shadow-sm border-b z-50" style={{ backgroundColor: '#e2775c', borderColor: '#f05d43' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex justify-between items-center">
             {/* Left side - Navigation only */}
@@ -593,7 +565,7 @@ export default function Home() {
               <Link 
                 href="/" 
                 className="transition-colors flex items-center space-x-1"
-                style={{ color: '#D0DADA' }}
+                style={{ color: '#42504d' }}
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -605,8 +577,8 @@ export default function Home() {
             {/* Center - Welcome message */}
             {storedEmail && (
               <div className="text-center">
-                <p className="text-sm" style={{ color: '#D0DADA' }}>
-                  Welcome back, <span className="font-medium" style={{ color: '#4A5555' }}>{storedEmail}</span>
+                <p className="text-sm" style={{ color: '#42504d' }}>
+                  Welcome back, <span className="font-medium" style={{ color: '#FFFFFF' }}>{storedEmail}</span>
                   <span className="mx-2">•</span>
                   {userAction === 'signup' ? 'New account' : 'Logged in'} on {lastLogin}
                 </p>
@@ -632,7 +604,7 @@ export default function Home() {
 
       {/* Email Input for non-logged in users */}
       {!storedEmail && (
-        <div className="border-b py-4 z-40 transition-all duration-300 ease-in-out" style={{ backgroundColor: '#8FA8A8', borderColor: '#4A5555' }}>
+        <div className="border-b py-4 z-40 transition-all duration-300 ease-in-out" style={{ backgroundColor: '#939b7e', borderColor: '#42504d' }}>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-center items-center space-x-3">
               <input
@@ -641,12 +613,13 @@ export default function Home() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Enter your email to continue"
                 className="px-4 py-2 text-sm border rounded-lg focus:ring-2 focus:border-transparent w-64"
-                style={{ borderColor: '#4A5555', backgroundColor: '#D0DADA', color: '#4A5555' }}
+                style={{ borderColor: '#f05d43', backgroundColor: '#FFFFFF', color: '#42504d' }}
+                suppressHydrationWarning={true}
               />
               <button
                 onClick={handleSaveEmail}
                 className="px-4 py-2 text-sm rounded-lg transition-colors"
-                style={{ backgroundColor: '#4A5555', color: '#D0DADA' }}
+                style={{ backgroundColor: '#f05d43', color: '#FFFFFF' }}
               >
                 Continue
               </button>
@@ -697,7 +670,7 @@ export default function Home() {
                         onClick={processQueue}
                         disabled={isProcessing || pendingCount === 0}
                         className="flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-sm"
-                        style={{ backgroundColor: '#8FA8A8', color: '#FFFFFF' }}
+                        style={{ backgroundColor: '#f05d43', color: '#FFFFFF' }}
                       >
                         {isProcessing ? 'Processing...' : 'Process'}
                       </button>
@@ -880,7 +853,7 @@ export default function Home() {
               >
                 <input {...getInputProps()} />
                 <div className="text-center">
-                  <div className="mx-auto w-20 h-20 rounded-full flex items-center justify-center mb-6" style={{ backgroundColor: '#8FA8A8' }}>
+                  <div className="mx-auto w-20 h-20 rounded-full flex items-center justify-center mb-6" style={{ backgroundColor: '#939b7e' }}>
                     <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: '#4A5555' }}>
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                     </svg>
@@ -906,7 +879,7 @@ export default function Home() {
                   <div className="flex items-center space-x-4">
                     <h2 className="text-2xl font-bold" style={{ color: '#4A5555' }}>Your Queued Images</h2>
                     {airtableQueueItems.length > 0 && (
-                      <span className="px-2 py-1 text-sm rounded-full" style={{ backgroundColor: '#8FA8A8', color: '#4A5555' }}>
+                      <span className="px-2 py-1 text-sm rounded-full" style={{ backgroundColor: '#e2775c', color: '#FFFFFF' }}>
                         {airtableQueueItems.length} items
                       </span>
                     )}
@@ -916,7 +889,7 @@ export default function Home() {
                       onClick={fetchAirtableQueueItems}
                       disabled={isLoadingAirtableQueue}
                       className="flex items-center space-x-2 px-3 py-2 text-sm rounded-lg transition-colors disabled:opacity-50"
-                      style={{ backgroundColor: '#8FA8A8', color: '#4A5555' }}
+                      style={{ backgroundColor: '#939b7e', color: '#42504d' }}
                       title="Refresh queue"
                     >
                       <svg className={`w-4 h-4 ${isLoadingAirtableQueue ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -927,7 +900,7 @@ export default function Home() {
                     <button
                       onClick={() => setShowAirtableQueue(!showAirtableQueue)}
                       className="flex items-center space-x-2 px-3 py-2 text-sm rounded-lg transition-colors"
-                      style={{ backgroundColor: '#8FA8A8', color: '#4A5555' }}
+                      style={{ backgroundColor: '#939b7e', color: '#42504d' }}
                     >
                       <span>{showAirtableQueue ? 'Hide' : 'Show'}</span>
                       <svg className={`w-4 h-4 transition-transform ${showAirtableQueue ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -947,7 +920,7 @@ export default function Home() {
                     ) : airtableQueueItems.length > 0 ? (
                       <div className="p-6">
                         <div className="grid md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-2">
-                          {airtableQueueItems.map((item, index) => (
+                          {airtableQueueItems.map((item) => (
                             <div 
                               key={item.id} 
                               draggable={!isReorderingAirtable}
@@ -1022,6 +995,7 @@ export default function Home() {
                     placeholder="Enter your email address"
                     className="flex-1 px-4 py-3 border rounded-lg focus:ring-2 focus:border-transparent transition-all"
                     style={{ borderColor: '#D1D5DB', backgroundColor: '#FFFFFF', color: '#4A5555' }}
+                    suppressHydrationWarning={true}
                   />
                   <button
                     onClick={handleSaveEmail}
@@ -1032,7 +1006,7 @@ export default function Home() {
                   </button>
                 </div>
                 <p className="text-sm" style={{ color: '#6B7280' }}>
-                  Don't have an account? Just enter your email to get started.
+                  Don&apos;t have an account? Just enter your email to get started.
                 </p>
               </div>
             </div>
