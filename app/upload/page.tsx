@@ -474,6 +474,7 @@ export default function Home() {
       const bulkResponse = {
         ok: successCount > 0,
         status: successCount === completedUploads.length ? 200 : 207, // 207 = partial success
+        statusText: successCount === completedUploads.length ? 'OK' : 'Multi-Status',
         json: async () => ({
           summary: { successful: successCount, failed: errorCount },
           errors: errors.map(error => ({ message: error }))
