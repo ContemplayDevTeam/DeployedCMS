@@ -105,7 +105,6 @@ async function testUploadFlow() {
     'File Size',
     'Notes',
     'Image Queue #',
-    'Priority'
   ];
 
   console.log('✅ Expected fields:', expectedFields.join(', '));

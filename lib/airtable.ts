@@ -24,7 +24,6 @@ interface QueueItem {
   publishDate?: string
   publishTime?: string
   notes?: string
-  priority?: number
   tags?: string[]
   processingTime?: number
   metadata?: Record<string, unknown>
@@ -249,12 +248,10 @@ export class AirtableBackend {
     publishTime?: string
     metadata?: Record<string, unknown>
     tags?: string[]
-    priority?: number
   }): Promise<QueueItem> {
     console.log('📤 Starting image queue process...')
     
     try {
-      // Priority is no longer used since it's not in the field list
       console.log('📤 Starting image queue process for user:', userEmail)
 
       // Prepare the payload - only include fields that exist in the Airtable table
@@ -278,9 +275,6 @@ export class AirtableBackend {
       }
       if (imageData.tags && imageData.tags.length > 0) {
         fields['Tags'] = imageData.tags
-      }
-      if (imageData.priority) {
-        fields['Priority'] = imageData.priority
       }
       if (imageData.metadata) {
         fields['Metadata'] = JSON.stringify(imageData.metadata)
@@ -320,7 +314,6 @@ export class AirtableBackend {
         publishDate: record.fields['Publish Date'] as string,
         publishTime: record.fields['Publish Time'] as string,
         notes: record.fields['Notes'] as string,
-        priority: record.fields['Priority'] as number,
         tags: record.fields['Tags'] as string[],
         metadata: record.fields['Metadata'] ? JSON.parse(record.fields['Metadata'] as string) : undefined
       }
@@ -358,7 +351,6 @@ export class AirtableBackend {
         publishDate: record.fields['Publish Date'] as string,
         publishTime: record.fields['Publish Time'] as string,
         notes: record.fields['Notes'] as string || '',
-        priority: record.fields['Priority'] as number || 0,
         tags: record.fields['Tags'] as string[] || [],
         metadata: record.fields['Metadata'] ? JSON.parse(record.fields['Metadata'] as string) : undefined
       }))
@@ -442,8 +434,8 @@ export class AirtableBackend {
 
       console.log(`✅ Found ${validIds.length} valid records to reorder`)
 
-      // Since we don't have a Priority field, we'll use the Upload Date and Publish Date
-      // to maintain order. We'll update the Publish Date with timestamps that reflect the desired order.
+      // We'll use the Upload Date and Publish Date to maintain order.
+      // We'll update the Publish Date with timestamps that reflect the desired order.
 
       const baseDate = new Date()
       const updates = validIds.map((recordId, index) => ({
@@ -664,7 +656,6 @@ export class AirtableBackend {
         publishDate: record.fields['Publish Date'] as string,
         publishTime: record.fields['Publish Time'] as string,
         notes: record.fields['Notes'] as string || '',
-        priority: record.fields['Priority'] as number || 0,
         tags: record.fields['Tags'] as string[] || [],
         metadata: record.fields['Metadata'] ? JSON.parse(record.fields['Metadata'] as string) : undefined
       }))

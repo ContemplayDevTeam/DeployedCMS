@@ -18,7 +18,6 @@ interface QueueItem {
   uploadError?: string // Error message if upload failed
   // Enhanced fields
   notes?: string
-  priority?: number
   metadata?: Record<string, unknown>
   publishDate?: string
 }
@@ -33,7 +32,6 @@ interface AirtableQueueItem {
   uploadDate: string
   publishDate?: string
   notes?: string
-  priority: number
 }
 
 export default function Home() {
@@ -55,7 +53,6 @@ export default function Home() {
   const mainRef = useRef<HTMLDivElement>(null)
 
   // Enhanced fields state
-  const [defaultPriority, setDefaultPriority] = useState<number>(5)
   const [defaultNotes, setDefaultNotes] = useState<string>('')
   const [defaultPublishDate, setDefaultPublishDate] = useState<string>(new Date().toISOString().split('T')[0])
 
@@ -282,7 +279,6 @@ export default function Home() {
         localPreview: URL.createObjectURL(file),
         fileSize: file.size,
         // Enhanced fields with defaults
-        priority: defaultPriority,
         notes: defaultNotes,
         publishDate: defaultPublishDate,
         metadata: {
@@ -447,7 +443,6 @@ export default function Home() {
                 name: item.file.name,
                 size: item.file.size,
                 notes: item.notes,
-                priority: item.priority,
                 publishDate: item.publishDate,
                 metadata: {
                   ...item.metadata,
@@ -702,226 +697,6 @@ export default function Home() {
       >
         {storedEmail ? (
           <>
-            {/* Local Queue Sidebar */}
-            <div className={`shadow-lg border-r transition-all duration-300 z-30 ${
-              showQueue ? 'w-80 min-w-80' : 'w-0'
-            } overflow-hidden`} style={{ backgroundColor: '#D0DADA', borderColor: '#4A5555' }}>
-              <div className="h-full flex flex-col">
-                {/* Queue Header */}
-                <div className="p-2 border-b" style={{ borderColor: '#4A5555', backgroundColor: '#8FA8A8' }}>
-                  <div className="flex justify-between items-center">
-                    <h3 className="text-sm font-semibold" style={{ color: '#4A5555' }}>Local Queue</h3>
-                    <button
-                      onClick={() => setShowQueue(false)}
-                      className="p-1 transition-colors"
-                      style={{ color: '#4A5555' }}
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </div>
-                  
-                  {/* Process and Clear Queue Buttons */}
-                  {queue.length > 0 && (
-                    <div className="flex space-x-1 mt-2">
-                      <button
-                        onClick={clearQueue}
-                        disabled={isProcessing}
-                        className="flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-sm"
-                        style={{ backgroundColor: '#F3F4F6', color: '#6B7280', border: '1px solid #E5E7EB' }}
-                      >
-                        Clear
-                      </button>
-                      <button
-                        onClick={processQueue}
-                        disabled={isProcessing || pendingCount === 0}
-                        className="flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-sm"
-                        style={{ backgroundColor: '#f05d43', color: '#FFFFFF' }}
-                      >
-                        {isProcessing ? 'Processing...' : 'Process'}
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                {/* Queue Items */}
-                <div className="flex-1 overflow-y-auto p-4">
-                  {queue.length > 0 ? (
-                    <div className="space-y-3">
-                      {queue.map((item, index) => (
-                        <div
-                          key={item.id}
-                          draggable={!isSelectMode}
-                          onDragStart={(e) => handleDragStart(e, item.id)}
-                          onDragOver={handleDragOver}
-                          onDrop={(e) => handleDrop(e, item.id)}
-                          className={`bg-gray-50 rounded-lg p-3 border border-gray-200 hover:border-gray-300 transition-all cursor-move ${
-                            draggedItem === item.id ? 'opacity-50' : ''
-                          } ${item.selected ? 'ring-2 ring-blue-500 bg-blue-50' : ''}`}
-                        >
-                          <div className="flex items-start space-x-3">
-                            {/* Queue number */}
-                            <div className="w-6 h-6 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0">
-                              <span className="text-xs font-semibold text-gray-600">{index + 1}</span>
-                            </div>
-                            
-                            {/* Image thumbnail */}
-                            <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden border border-gray-200">
-                              {item.localPreview ? (
-                                <img
-                                  src={item.localPreview}
-                                  alt={item.file.name}
-                                  className="w-full h-full object-cover"
-                                />
-                              ) : (
-                                <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                </svg>
-                              )}
-                            </div>
-                            
-                            {/* File info */}
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center space-x-2 mb-1">
-                                {isSelectMode && (
-                                  <input
-                                    type="checkbox"
-                                    checked={item.selected || false}
-                                    onChange={() => toggleItemSelection(item.id)}
-                                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                                  />
-                                )}
-                                <p className="text-sm font-medium text-gray-900 truncate">{item.file.name}</p>
-                              </div>
-                              
-                              <div className="space-y-2">
-                                <div className="flex items-center justify-between">
-                                  <p className="text-xs text-gray-500">
-                                    {item.fileSize ? (item.fileSize / 1024 / 1024).toFixed(2) : '0.00'} MB
-                                  </p>
-                                  <div className="flex items-center space-x-1">
-                                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                                      item.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                                      item.status === 'uploading' ? 'bg-blue-100 text-blue-800' :
-                                      item.status === 'completed' ? 'bg-green-100 text-green-800' :
-                                      'bg-red-100 text-red-800'
-                                    }`}>
-                                      {item.status === 'completed' ? 'Ready' : item.status}
-                                    </span>
-                                    {item.cloudinaryUrl && (
-                                      <span className="text-xs text-green-600">✓ Cloudinary</span>
-                                    )}
-                                  </div>
-                                </div>
-
-                                {/* Enhanced fields display */}
-                                <div className="flex items-center space-x-3 text-xs text-gray-500">
-                                  {item.priority && (
-                                    <span className="flex items-center space-x-1">
-                                      <span>🔥</span>
-                                      <span>P{item.priority}</span>
-                                    </span>
-                                  )}
-                                  {item.publishDate && (
-                                    <span className="flex items-center space-x-1">
-                                      <span>📅</span>
-                                      <span>{item.publishDate}</span>
-                                    </span>
-                                  )}
-                                  {item.notes && (
-                                    <span className="flex items-center space-x-1">
-                                      <span>📝</span>
-                                      <span className="truncate max-w-20" title={item.notes}>{item.notes}</span>
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-
-                              {/* Progress bar for uploading items */}
-                              {item.status === 'uploading' && item.progress !== undefined && (
-                                <div className="mt-2">
-                                  <div className="w-full bg-gray-200 rounded-full h-1">
-                                    <div 
-                                      className="bg-indigo-600 h-1 rounded-full transition-all duration-300"
-                                      style={{ width: `${item.progress}%` }}
-                                    ></div>
-                                  </div>
-                                  <p className="text-xs text-gray-500 mt-1">{item.progress}%</p>
-                                </div>
-                              )}
-
-                              {/* Error message */}
-                              {item.status === 'error' && item.uploadError && (
-                                <p className="text-xs text-red-600 mt-1">{item.uploadError}</p>
-                              )}
-                            </div>
-
-                            {/* Action buttons */}
-                            <div className="flex items-center space-x-1 ml-2">
-                              {!isSelectMode && (
-                                <>
-                                  {/* Move up button */}
-                                  {index > 0 && (
-                                    <button
-                                      onClick={() => moveInQueue(index, index - 1)}
-                                      className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
-                                      title="Move up"
-                                    >
-                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-                                      </svg>
-                                    </button>
-                                  )}
-                                  
-                                  {/* Move down button */}
-                                  {index < queue.length - 1 && (
-                                    <button
-                                      onClick={() => moveInQueue(index, index + 1)}
-                                      className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
-                                      title="Move down"
-                                    >
-                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                      </svg>
-                                    </button>
-                                  )}
-                                  
-                                  {/* Remove button */}
-                                  <button
-                                    onClick={() => removeFromQueue(item.id)}
-                                    className="p-1 text-red-400 hover:text-red-600 transition-colors"
-                                    title="Remove from queue"
-                                  >
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
-                                  </button>
-                                </>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center h-full text-center">
-                      <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                        <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                        </svg>
-                      </div>
-                      <h3 className="text-lg font-medium text-gray-900 mb-2">Local Queue</h3>
-                      <p className="text-sm text-gray-500">Your uploads will appear here</p>
-                      <p className="text-xs text-gray-400 mt-2">Drag files to the drop zone to get started</p>
-                    </div>
-                  )}
-                </div>
-
-
-              </div>
-            </div>
-
             {/* Main Upload Area */}
             <div className="flex-1 flex flex-col p-6" style={{ backgroundColor: '#FFFFFF' }}>
               <div className="text-center mb-8">
@@ -939,25 +714,7 @@ export default function Home() {
               {/* Enhanced Upload Settings */}
               <div className="max-w-2xl mx-auto mb-8 p-6 rounded-xl border" style={{ backgroundColor: '#F8F9FA', borderColor: '#E5E7EB' }}>
                 <h3 className="text-lg font-semibold mb-4" style={{ color: '#4A5555' }}>Upload Settings</h3>
-                <div className="grid md:grid-cols-3 gap-4">
-                  {/* Priority Slider */}
-                  <div>
-                    <label className="block text-sm font-medium mb-2" style={{ color: '#6B7280' }}>
-                      Priority: {defaultPriority}
-                    </label>
-                    <input
-                      type="range"
-                      min="1"
-                      max="10"
-                      value={defaultPriority}
-                      onChange={(e) => setDefaultPriority(parseInt(e.target.value))}
-                      className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
-                    />
-                    <div className="flex justify-between text-xs mt-1" style={{ color: '#9CA3AF' }}>
-                      <span>Low</span>
-                      <span>High</span>
-                    </div>
-                  </div>
+                <div className="grid md:grid-cols-2 gap-4">
 
                   {/* Publish Date */}
                   <div>
@@ -1021,7 +778,7 @@ export default function Home() {
               <div className="mt-12">
                 <div className="flex items-center justify-between mb-6">
                   <div className="flex items-center space-x-4">
-                    <h2 className="text-2xl font-bold" style={{ color: '#4A5555' }}>Your Queued Images</h2>
+                    <h2 className="text-2xl font-bold" style={{ color: '#4A5555' }}>Image Bank</h2>
                     {airtableQueueItems.length > 0 && (
                       <span className="px-2 py-1 text-sm rounded-full" style={{ backgroundColor: '#e2775c', color: '#FFFFFF' }}>
                         {airtableQueueItems.length} items
@@ -1123,6 +880,220 @@ export default function Home() {
                     )}
                   </div>
                 )}
+              </div>
+            </div>
+
+            {/* Publishing Queue Sidebar */}
+            <div className={`shadow-lg border-l transition-all duration-300 z-30 ${
+              showQueue ? 'w-80 min-w-80' : 'w-0'
+            } overflow-hidden`} style={{ backgroundColor: '#D0DADA', borderColor: '#4A5555' }}>
+              <div className="h-full flex flex-col">
+                {/* Queue Header */}
+                <div className="p-2 border-b" style={{ borderColor: '#4A5555', backgroundColor: '#8FA8A8' }}>
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-sm font-semibold" style={{ color: '#4A5555' }}>Publishing Queue</h3>
+                    <button
+                      onClick={() => setShowQueue(false)}
+                      className="p-1 transition-colors"
+                      style={{ color: '#4A5555' }}
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+
+                  {/* Process and Clear Queue Buttons */}
+                  {queue.length > 0 && (
+                    <div className="flex space-x-1 mt-2">
+                      <button
+                        onClick={clearQueue}
+                        disabled={isProcessing}
+                        className="flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-sm"
+                        style={{ backgroundColor: '#F3F4F6', color: '#6B7280', border: '1px solid #E5E7EB' }}
+                      >
+                        Clear
+                      </button>
+                      <button
+                        onClick={processQueue}
+                        disabled={isProcessing || pendingCount === 0}
+                        className="flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-sm"
+                        style={{ backgroundColor: '#f05d43', color: '#FFFFFF' }}
+                      >
+                        {isProcessing ? 'Processing...' : 'Process'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Queue Items */}
+                <div className="flex-1 overflow-y-auto p-4">
+                  {queue.length > 0 ? (
+                    <div className="space-y-3">
+                      {queue.map((item, index) => (
+                        <div
+                          key={item.id}
+                          draggable={!isSelectMode}
+                          onDragStart={(e) => handleDragStart(e, item.id)}
+                          onDragOver={handleDragOver}
+                          onDrop={(e) => handleDrop(e, item.id)}
+                          className={`bg-gray-50 rounded-lg p-3 border border-gray-200 hover:border-gray-300 transition-all cursor-move ${
+                            draggedItem === item.id ? 'opacity-50' : ''
+                          } ${item.selected ? 'ring-2 ring-blue-500 bg-blue-50' : ''}`}
+                        >
+                          <div className="flex items-start space-x-3">
+                            {/* Queue number */}
+                            <div className="w-6 h-6 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0">
+                              <span className="text-xs font-semibold text-gray-600">{index + 1}</span>
+                            </div>
+
+                            {/* Image thumbnail */}
+                            <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden border border-gray-200">
+                              {item.localPreview ? (
+                                <img
+                                  src={item.localPreview}
+                                  alt={item.file.name}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                              )}
+                            </div>
+
+                            {/* File info */}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center space-x-2 mb-1">
+                                {isSelectMode && (
+                                  <input
+                                    type="checkbox"
+                                    checked={item.selected || false}
+                                    onChange={() => toggleItemSelection(item.id)}
+                                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                  />
+                                )}
+                                <p className="text-sm font-medium text-gray-900 truncate">{item.file.name}</p>
+                              </div>
+
+                              <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <p className="text-xs text-gray-500">
+                                    {item.fileSize ? (item.fileSize / 1024 / 1024).toFixed(2) : '0.00'} MB
+                                  </p>
+                                  <div className="flex items-center space-x-1">
+                                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                      item.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                      item.status === 'uploading' ? 'bg-blue-100 text-blue-800' :
+                                      item.status === 'completed' ? 'bg-green-100 text-green-800' :
+                                      'bg-red-100 text-red-800'
+                                    }`}>
+                                      {item.status === 'completed' ? 'Ready' : item.status}
+                                    </span>
+                                    {item.cloudinaryUrl && (
+                                      <span className="text-xs text-green-600">✓ Cloudinary</span>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* Enhanced fields display */}
+                                <div className="flex items-center space-x-3 text-xs text-gray-500">
+                                  {item.publishDate && (
+                                    <span className="flex items-center space-x-1">
+                                      <span>📅</span>
+                                      <span>{item.publishDate}</span>
+                                    </span>
+                                  )}
+                                  {item.notes && (
+                                    <span className="flex items-center space-x-1">
+                                      <span>📝</span>
+                                      <span className="truncate max-w-20" title={item.notes}>{item.notes}</span>
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Progress bar for uploading items */}
+                              {item.status === 'uploading' && item.progress !== undefined && (
+                                <div className="mt-2">
+                                  <div className="w-full bg-gray-200 rounded-full h-1">
+                                    <div
+                                      className="bg-indigo-600 h-1 rounded-full transition-all duration-300"
+                                      style={{ width: `${item.progress}%` }}
+                                    ></div>
+                                  </div>
+                                  <p className="text-xs text-gray-500 mt-1">{item.progress}%</p>
+                                </div>
+                              )}
+
+                              {/* Error message */}
+                              {item.status === 'error' && item.uploadError && (
+                                <p className="text-xs text-red-600 mt-1">{item.uploadError}</p>
+                              )}
+                            </div>
+
+                            {/* Action buttons */}
+                            <div className="flex items-center space-x-1 ml-2">
+                              {!isSelectMode && (
+                                <>
+                                  {/* Move up button */}
+                                  {index > 0 && (
+                                    <button
+                                      onClick={() => moveInQueue(index, index - 1)}
+                                      className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
+                                      title="Move up"
+                                    >
+                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                                      </svg>
+                                    </button>
+                                  )}
+
+                                  {/* Move down button */}
+                                  {index < queue.length - 1 && (
+                                    <button
+                                      onClick={() => moveInQueue(index, index + 1)}
+                                      className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
+                                      title="Move down"
+                                    >
+                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                      </svg>
+                                    </button>
+                                  )}
+
+                                  {/* Remove button */}
+                                  <button
+                                    onClick={() => removeFromQueue(item.id)}
+                                    className="p-1 text-red-400 hover:text-red-600 transition-colors"
+                                    title="Remove from queue"
+                                  >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-full text-center">
+                      <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                        <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                        </svg>
+                      </div>
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">Publishing Queue</h3>
+                      <p className="text-sm text-gray-500">Your uploads will appear here</p>
+                      <p className="text-xs text-gray-400 mt-2">Drag files to the drop zone to get started</p>
+                    </div>
+                  )}
+                </div>
+
+
               </div>
             </div>
           </>

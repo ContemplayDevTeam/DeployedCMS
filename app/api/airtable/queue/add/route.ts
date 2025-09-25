@@ -73,7 +73,6 @@ export async function POST(request: NextRequest) {
       publishTime: imageData.publishTime,
       metadata: imageData.metadata,
       tags: imageData.tags,
-      priority: imageData.priority
     })
 
     // Update user stats - increment upload count and storage
