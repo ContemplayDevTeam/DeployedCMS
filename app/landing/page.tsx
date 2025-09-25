@@ -81,8 +81,15 @@ export default function Landing() {
                                            <div className="flex items-center space-x-4">
               {email ? (
                 <>
-                  <Link 
-                    href="/upload" 
+                  <Link
+                    href="/dashboard"
+                    className="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors"
+                    style={{ color: '#42504d' }}
+                  >
+                    Dashboard
+                  </Link>
+                  <Link
+                    href="/upload"
                     className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-colors"
                     style={{ color: '#FFFFFF', backgroundColor: '#f05d43' }}
                   >
