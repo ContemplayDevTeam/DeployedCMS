@@ -3,9 +3,14 @@ interface User {
   email: string
   isVerified: boolean
   isPaid: boolean
-  subscriptionTier: 'Free' | 'Basic' | 'Pro' // Updated to match actual Airtable values
+  subscriptionTier: 'Free' | 'Basic' | 'Pro'
   createdDate: string
   lastLogin: string
+  lastActivity?: string
+  totalUploads?: number
+  storageUsed?: number
+  preferences?: Record<string, unknown>
+  planExpiry?: string
 }
 
 interface QueueItem {
@@ -17,8 +22,12 @@ interface QueueItem {
   status: 'queued' | 'processing' | 'published' | 'failed'
   uploadDate: string
   publishDate?: string
+  publishTime?: string
   notes?: string
-  priority: number
+  priority?: number
+  tags?: string[]
+  processingTime?: number
+  metadata?: Record<string, unknown>
 }
 
 export class AirtableBackend {
@@ -95,9 +104,13 @@ export class AirtableBackend {
               'Email': userData.email,
               'Is Verified': userData.isVerified || false,
               'Is Paid': false,
-              'Subscription Tier': 'Free', // Changed from 'free' to 'Free' to match existing data
-              'Created Date': new Date().toISOString().split('T')[0], // Use YYYY-MM-DD format
-              'Last Login': new Date().toISOString().split('T')[0] // Use YYYY-MM-DD format
+              'Subscription Tier': 'Free',
+              'Created Date': new Date().toISOString().split('T')[0],
+              'Last Login': new Date().toISOString().split('T')[0],
+              'Last Activity': new Date().toISOString().split('T')[0].split('T')[0],
+              'Total Uploads': 0,
+              'Storage Used': 0,
+              'Preferences': JSON.stringify({})
             }
           }]
         })
@@ -111,7 +124,12 @@ export class AirtableBackend {
         isPaid: record.fields['Is Paid'] as boolean,
         subscriptionTier: record.fields['Subscription Tier'] as 'Free' | 'Basic' | 'Pro',
         createdDate: record.fields['Created Date'] as string,
-        lastLogin: record.fields['Last Login'] as string
+        lastLogin: record.fields['Last Login'] as string,
+        lastActivity: record.fields['Last Activity'] as string,
+        totalUploads: record.fields['Total Uploads'] as number || 0,
+        storageUsed: record.fields['Storage Used'] as number || 0,
+        preferences: record.fields['Preferences'] ? JSON.parse(record.fields['Preferences'] as string) : {},
+        planExpiry: record.fields['Plan Expiry'] as string
       }
     } catch (error) {
       console.error('Error creating user:', error)
@@ -149,7 +167,12 @@ export class AirtableBackend {
         isPaid: record.fields['Is Paid'] as boolean,
         subscriptionTier: record.fields['Subscription Tier'] as 'Free' | 'Basic' | 'Pro',
         createdDate: record.fields['Created Date'] as string,
-        lastLogin: record.fields['Last Login'] as string
+        lastLogin: record.fields['Last Login'] as string,
+        lastActivity: record.fields['Last Activity'] as string,
+        totalUploads: record.fields['Total Uploads'] as number || 0,
+        storageUsed: record.fields['Storage Used'] as number || 0,
+        preferences: record.fields['Preferences'] ? JSON.parse(record.fields['Preferences'] as string) : {},
+        planExpiry: record.fields['Plan Expiry'] as string
       }
     } catch (error) {
       console.error('💥 Real Airtable error:', error)
@@ -223,7 +246,10 @@ export class AirtableBackend {
     size: number
     notes?: string
     publishDate?: string
+    publishTime?: string
     metadata?: Record<string, unknown>
+    tags?: string[]
+    priority?: number
   }): Promise<QueueItem> {
     console.log('📤 Starting image queue process...')
     
@@ -235,12 +261,29 @@ export class AirtableBackend {
       const publishDate = imageData.publishDate || new Date().toISOString().split('T')[0]
       
       const fields: Record<string, unknown> = {
-        'User Email': userEmail, // Email field
-        'Image URL': imageData.url, // Link field
-        'Upload Date': new Date().toISOString().split('T')[0], // Date field (YYYY-MM-DD)
-        'Publish Date': publishDate // Date field (YYYY-MM-DD)
-        // "Publish Time" field removed - causing 422 error
-        // "Image Queue #" is auto-assigned by Airtable, not sent in payload
+        'User Email': userEmail,
+        'Image URL': imageData.url,
+        'File Name': imageData.name,
+        'File Size': imageData.size,
+        'Upload Date': new Date().toISOString().split('T')[0],
+        'Publish Date': publishDate
+      }
+
+      // Add optional fields if provided
+      if (imageData.publishTime) {
+        fields['Publish Time'] = imageData.publishTime
+      }
+      if (imageData.notes) {
+        fields['Notes'] = imageData.notes
+      }
+      if (imageData.tags && imageData.tags.length > 0) {
+        fields['Tags'] = imageData.tags
+      }
+      if (imageData.priority) {
+        fields['Priority'] = imageData.priority
+      }
+      if (imageData.metadata) {
+        fields['Metadata'] = JSON.stringify(imageData.metadata)
       }
 
       const payload = {
@@ -270,13 +313,16 @@ export class AirtableBackend {
         id: record.id,
         userEmail: record.fields['User Email'] as string,
         imageUrl: record.fields['Image URL'] as string,
-        fileName: imageData.name, // Use the original data since it's not stored in Airtable
-        fileSize: imageData.size, // Use the original data since it's not stored in Airtable
-        status: 'queued' as const, // Default status since it's not stored in Airtable
+        fileName: record.fields['File Name'] as string,
+        fileSize: record.fields['File Size'] as number,
+        status: record.fields['Status'] as 'queued' | 'processing' | 'published' | 'failed',
         uploadDate: record.fields['Upload Date'] as string,
-        publishDate: record.fields['Publish Date'] as string || imageData.publishDate,
-        priority: 0, // Priority no longer used - set to default value
-        notes: imageData.notes || '' // Use the original data since it's not stored in Airtable
+        publishDate: record.fields['Publish Date'] as string,
+        publishTime: record.fields['Publish Time'] as string,
+        notes: record.fields['Notes'] as string,
+        priority: record.fields['Priority'] as number,
+        tags: record.fields['Tags'] as string[],
+        metadata: record.fields['Metadata'] ? JSON.parse(record.fields['Metadata'] as string) : undefined
       }
 
       console.log('🎉 Queue item created successfully:', queueItem.id)
@@ -305,13 +351,16 @@ export class AirtableBackend {
         id: record.id,
         userEmail: record.fields['User Email'] as string,
         imageUrl: record.fields['Image URL'] as string,
-        fileName: 'Unknown', // Not stored in Airtable
-        fileSize: 0, // Not stored in Airtable
-        status: 'queued' as const, // Default status since it's not stored in Airtable
+        fileName: record.fields['File Name'] as string || 'Unknown',
+        fileSize: record.fields['File Size'] as number || 0,
+        status: record.fields['Status'] as 'queued' | 'processing' | 'published' | 'failed' || 'queued',
         uploadDate: record.fields['Upload Date'] as string,
         publishDate: record.fields['Publish Date'] as string,
-        priority: 0, // Priority no longer used
-        notes: '' // Not stored in Airtable
+        publishTime: record.fields['Publish Time'] as string,
+        notes: record.fields['Notes'] as string || '',
+        priority: record.fields['Priority'] as number || 0,
+        tags: record.fields['Tags'] as string[] || [],
+        metadata: record.fields['Metadata'] ? JSON.parse(record.fields['Metadata'] as string) : undefined
       }))
     } catch (error) {
       console.error('Error getting queue status:', error)
@@ -480,6 +529,148 @@ export class AirtableBackend {
     } catch (error) {
       console.error('Error initializing base:', error)
       return false
+    }
+  }
+
+  // Helper methods for new functionality
+  async updateUserActivity(email: string): Promise<boolean> {
+    try {
+      const user = await this.getUser(email)
+      if (!user) return false
+
+      await this.makeRequest(`/${this.tableIds.users}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          records: [{
+            id: user.id,
+            fields: {
+              'Last Activity': new Date().toISOString().split('T')[0]
+            }
+          }]
+        })
+      })
+      return true
+    } catch (error) {
+      console.error('Error updating user activity:', error)
+      return false
+    }
+  }
+
+  async updateUserStats(email: string, uploadsIncrement: number = 0, storageIncrement: number = 0): Promise<boolean> {
+    try {
+      const user = await this.getUser(email)
+      if (!user) return false
+
+      const newTotalUploads = (user.totalUploads || 0) + uploadsIncrement
+      const newStorageUsed = (user.storageUsed || 0) + storageIncrement
+
+      await this.makeRequest(`/${this.tableIds.users}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          records: [{
+            id: user.id,
+            fields: {
+              'Total Uploads': newTotalUploads,
+              'Storage Used': newStorageUsed,
+              'Last Activity': new Date().toISOString().split('T')[0]
+            }
+          }]
+        })
+      })
+      return true
+    } catch (error) {
+      console.error('Error updating user stats:', error)
+      return false
+    }
+  }
+
+  async updateUserPreferences(email: string, preferences: Record<string, unknown>): Promise<boolean> {
+    try {
+      const user = await this.getUser(email)
+      if (!user) return false
+
+      await this.makeRequest(`/${this.tableIds.users}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          records: [{
+            id: user.id,
+            fields: {
+              'Preferences': JSON.stringify(preferences),
+              'Last Activity': new Date().toISOString().split('T')[0]
+            }
+          }]
+        })
+      })
+      return true
+    } catch (error) {
+      console.error('Error updating user preferences:', error)
+      return false
+    }
+  }
+
+  async updateQueueItemProcessingTime(recordId: string, processingTimeSeconds: number): Promise<boolean> {
+    try {
+      await this.makeRequest(`/${this.tableIds.queue}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          records: [{
+            id: recordId,
+            fields: {
+              'Processing Time': processingTimeSeconds
+            }
+          }]
+        })
+      })
+      return true
+    } catch (error) {
+      console.error('Error updating processing time:', error)
+      return false
+    }
+  }
+
+  async addTagsToQueueItem(recordId: string, tags: string[]): Promise<boolean> {
+    try {
+      await this.makeRequest(`/${this.tableIds.queue}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          records: [{
+            id: recordId,
+            fields: {
+              'Tags': tags
+            }
+          }]
+        })
+      })
+      return true
+    } catch (error) {
+      console.error('Error adding tags to queue item:', error)
+      return false
+    }
+  }
+
+  async getQueueItemsByTag(userEmail: string, tag: string): Promise<QueueItem[]> {
+    try {
+      const formula = `AND({User Email} = '${userEmail}', SEARCH('${tag}', ARRAYJOIN({Tags}, ',')))`
+      const response = await this.makeRequest(`/${this.tableIds.queue}?filterByFormula=${encodeURIComponent(formula)}`)
+
+      return response.records.map((record: { id: string; fields: Record<string, unknown> }) => ({
+        id: record.id,
+        userEmail: record.fields['User Email'] as string,
+        imageUrl: record.fields['Image URL'] as string,
+        fileName: record.fields['File Name'] as string || 'Unknown',
+        fileSize: record.fields['File Size'] as number || 0,
+        status: record.fields['Status'] as 'queued' | 'processing' | 'published' | 'failed' || 'queued',
+        uploadDate: record.fields['Upload Date'] as string,
+        publishDate: record.fields['Publish Date'] as string,
+        publishTime: record.fields['Publish Time'] as string,
+        notes: record.fields['Notes'] as string || '',
+        priority: record.fields['Priority'] as number || 0,
+        tags: record.fields['Tags'] as string[] || [],
+        metadata: record.fields['Metadata'] ? JSON.parse(record.fields['Metadata'] as string) : undefined
+      }))
+    } catch (error) {
+      console.error('Error getting queue items by tag:', error)
+      return []
     }
   }
 }

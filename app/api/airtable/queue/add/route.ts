@@ -68,8 +68,16 @@ export async function POST(request: NextRequest) {
       url: imageData.url,
       name: imageData.name,
       size: imageData.size,
-      notes: imageData.notes
+      notes: imageData.notes,
+      publishDate: imageData.publishDate,
+      publishTime: imageData.publishTime,
+      metadata: imageData.metadata,
+      tags: imageData.tags,
+      priority: imageData.priority
     })
+
+    // Update user stats - increment upload count and storage
+    await airtable.updateUserStats(email, 1, imageData.size || 0)
 
     console.log('✅ Image queued successfully:', queueItem.id)
 

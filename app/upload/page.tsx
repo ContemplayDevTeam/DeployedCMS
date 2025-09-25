@@ -16,6 +16,11 @@ interface QueueItem {
   fileSize?: number // File size in bytes
   cloudinaryUrl?: string // Cloudinary URL after upload
   uploadError?: string // Error message if upload failed
+  // Enhanced fields
+  notes?: string
+  priority?: number
+  metadata?: Record<string, unknown>
+  publishDate?: string
 }
 
 interface AirtableQueueItem {
@@ -48,6 +53,11 @@ export default function Home() {
   const [draggedAirtableItem, setDraggedAirtableItem] = useState<string | null>(null)
   const [isReorderingAirtable, setIsReorderingAirtable] = useState(false)
   const mainRef = useRef<HTMLDivElement>(null)
+
+  // Enhanced fields state
+  const [defaultPriority, setDefaultPriority] = useState<number>(5)
+  const [defaultNotes, setDefaultNotes] = useState<string>('')
+  const [defaultPublishDate, setDefaultPublishDate] = useState<string>(new Date().toISOString().split('T')[0])
 
   useEffect(() => {
     const saved = localStorage.getItem('uploader_email')
@@ -258,15 +268,31 @@ export default function Home() {
       return
     }
 
-    // Immediately add files to local queue with previews
-    const newQueueItems: QueueItem[] = acceptedFiles.map(file => ({
-      id: `local-${Date.now()}-${Math.random()}`,
-      file,
-      status: 'pending',
-      selected: false,
-      localPreview: URL.createObjectURL(file),
-      fileSize: file.size
-    }))
+    // Immediately add files to local queue with previews and enhanced fields
+    const newQueueItems: QueueItem[] = acceptedFiles.map(file => {
+      // Create image element to get metadata
+      const img = new Image()
+      img.src = URL.createObjectURL(file)
+
+      return {
+        id: `local-${Date.now()}-${Math.random()}`,
+        file,
+        status: 'pending',
+        selected: false,
+        localPreview: URL.createObjectURL(file),
+        fileSize: file.size,
+        // Enhanced fields with defaults
+        priority: defaultPriority,
+        notes: defaultNotes,
+        publishDate: defaultPublishDate,
+        metadata: {
+          originalName: file.name,
+          mimeType: file.type,
+          lastModified: file.lastModified,
+          uploadTimestamp: Date.now()
+        }
+      }
+    })
 
     setQueue(prev => [...prev, ...newQueueItems])
     setStatus(`${acceptedFiles.length} file${acceptedFiles.length !== 1 ? 's' : ''} added to local queue`)
@@ -400,31 +426,60 @@ export default function Home() {
       setStatus(`Sending ${completedUploads.length} items to Airtable queue...`)
       console.log('📤 Preparing to send items to Airtable...')
 
-      // Build sanitized payload for Airtable using only fields that exist in the table
-      const publishDate = new Date().toISOString().split('T')[0]
-      
-      const queueItemsForAirtable = completedUploads.map(({ cloudinaryUrl }) => ({
-        // Use exact Airtable field names with proper casing and types
-        "User Email": storedEmail, // Email field
-        "Image URL": cloudinaryUrl, // Link field
-        "Upload Date": new Date().toISOString().split('T')[0], // Date field (YYYY-MM-DD)
-        "Publish Date": publishDate // Date field (YYYY-MM-DD)
-        // "Publish Time" field removed - causing 422 error
-        // "Image Queue #" is auto-assigned by Airtable, not sent in payload
-      }))
+      // Send each item individually with enhanced fields using the enhanced API
+      let successCount = 0
+      let errorCount = 0
+      const errors: string[] = []
 
-      console.log('📋 Queue items for Airtable:', queueItemsForAirtable)
-      console.log('📧 Sending to email:', storedEmail)
-      console.log('🧪 Final Payload to Airtable:', JSON.stringify(queueItemsForAirtable, null, 2))
+      for (let i = 0; i < completedUploads.length; i++) {
+        const { item, cloudinaryUrl } = completedUploads[i]
 
-      const bulkResponse = await fetch('/api/airtable/queue/bulk-add', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: storedEmail,
-          queueItems: queueItemsForAirtable
-        })
-      })
+        setStatus(`Adding item ${i + 1}/${completedUploads.length} to Airtable queue...`)
+
+        try {
+          const response = await fetch('/api/airtable/queue/add', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: storedEmail,
+              imageData: {
+                url: cloudinaryUrl,
+                name: item.file.name,
+                size: item.file.size,
+                notes: item.notes,
+                priority: item.priority,
+                publishDate: item.publishDate,
+                metadata: {
+                  ...item.metadata,
+                  processedAt: new Date().toISOString()
+                }
+              }
+            })
+          })
+
+          if (response.ok) {
+            successCount++
+          } else {
+            errorCount++
+            const errorData = await response.json()
+            errors.push(`${item.file.name}: ${errorData.error}`)
+          }
+        } catch (error) {
+          errorCount++
+          errors.push(`${item.file.name}: ${error instanceof Error ? error.message : 'Unknown error'}`)
+        }
+      }
+
+      // Create a mock bulk response for compatibility
+      const bulkResponse = {
+        ok: successCount > 0,
+        status: successCount === completedUploads.length ? 200 : 207, // 207 = partial success
+        json: async () => ({
+          summary: { successful: successCount, failed: errorCount },
+          errors: errors.map(error => ({ message: error }))
+        }),
+        text: async () => errors.join(', ')
+      }
 
       console.log('📡 Airtable bulk response status:', bulkResponse.status)
       console.log('📡 Airtable bulk response ok:', bulkResponse.ok)
@@ -728,21 +783,45 @@ export default function Home() {
                                 <p className="text-sm font-medium text-gray-900 truncate">{item.file.name}</p>
                               </div>
                               
-                              <div className="flex items-center justify-between">
-                                <p className="text-xs text-gray-500">
-                                  {item.fileSize ? (item.fileSize / 1024 / 1024).toFixed(2) : '0.00'} MB
-                                </p>
-                                <div className="flex items-center space-x-1">
-                                  <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                                    item.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                                    item.status === 'uploading' ? 'bg-blue-100 text-blue-800' :
-                                    item.status === 'completed' ? 'bg-green-100 text-green-800' :
-                                    'bg-red-100 text-red-800'
-                                  }`}>
-                                    {item.status === 'completed' ? 'Ready' : item.status}
-                                  </span>
-                                  {item.cloudinaryUrl && (
-                                    <span className="text-xs text-green-600">✓ Cloudinary</span>
+                              <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <p className="text-xs text-gray-500">
+                                    {item.fileSize ? (item.fileSize / 1024 / 1024).toFixed(2) : '0.00'} MB
+                                  </p>
+                                  <div className="flex items-center space-x-1">
+                                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                      item.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                      item.status === 'uploading' ? 'bg-blue-100 text-blue-800' :
+                                      item.status === 'completed' ? 'bg-green-100 text-green-800' :
+                                      'bg-red-100 text-red-800'
+                                    }`}>
+                                      {item.status === 'completed' ? 'Ready' : item.status}
+                                    </span>
+                                    {item.cloudinaryUrl && (
+                                      <span className="text-xs text-green-600">✓ Cloudinary</span>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* Enhanced fields display */}
+                                <div className="flex items-center space-x-3 text-xs text-gray-500">
+                                  {item.priority && (
+                                    <span className="flex items-center space-x-1">
+                                      <span>🔥</span>
+                                      <span>P{item.priority}</span>
+                                    </span>
+                                  )}
+                                  {item.publishDate && (
+                                    <span className="flex items-center space-x-1">
+                                      <span>📅</span>
+                                      <span>{item.publishDate}</span>
+                                    </span>
+                                  )}
+                                  {item.notes && (
+                                    <span className="flex items-center space-x-1">
+                                      <span>📝</span>
+                                      <span className="truncate max-w-20" title={item.notes}>{item.notes}</span>
+                                    </span>
                                   )}
                                 </div>
                               </div>
@@ -833,7 +912,7 @@ export default function Home() {
 
             {/* Main Upload Area */}
             <div className="flex-1 flex flex-col p-6" style={{ backgroundColor: '#FFFFFF' }}>
-              <div className="text-center mb-12">
+              <div className="text-center mb-8">
                 <div className="inline-flex items-center justify-center w-16 h-16 rounded-full mb-6" style={{ backgroundColor: '#4A5555' }}>
                   <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: '#D0DADA' }}>
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
@@ -841,9 +920,62 @@ export default function Home() {
                 </div>
                 <h1 className="text-4xl font-bold mb-4" style={{ color: '#D0DADA' }}>Upload Your Images</h1>
                 <p className="text-xl max-w-2xl mx-auto" style={{ color: '#4A5555' }}>
-                  Drag and drop your images to add them to your local queue. 
-                  Click &quot;Process Queue&quot; when ready to upload to Airtable.
+                  Configure your default settings below, then drag and drop your images.
                 </p>
+              </div>
+
+              {/* Enhanced Upload Settings */}
+              <div className="max-w-2xl mx-auto mb-8 p-6 rounded-xl border" style={{ backgroundColor: '#F8F9FA', borderColor: '#E5E7EB' }}>
+                <h3 className="text-lg font-semibold mb-4" style={{ color: '#4A5555' }}>Upload Settings</h3>
+                <div className="grid md:grid-cols-3 gap-4">
+                  {/* Priority Slider */}
+                  <div>
+                    <label className="block text-sm font-medium mb-2" style={{ color: '#6B7280' }}>
+                      Priority: {defaultPriority}
+                    </label>
+                    <input
+                      type="range"
+                      min="1"
+                      max="10"
+                      value={defaultPriority}
+                      onChange={(e) => setDefaultPriority(parseInt(e.target.value))}
+                      className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
+                    />
+                    <div className="flex justify-between text-xs mt-1" style={{ color: '#9CA3AF' }}>
+                      <span>Low</span>
+                      <span>High</span>
+                    </div>
+                  </div>
+
+                  {/* Publish Date */}
+                  <div>
+                    <label className="block text-sm font-medium mb-2" style={{ color: '#6B7280' }}>
+                      Publish Date
+                    </label>
+                    <input
+                      type="date"
+                      value={defaultPublishDate}
+                      onChange={(e) => setDefaultPublishDate(e.target.value)}
+                      className="w-full px-3 py-2 border rounded-lg text-sm"
+                      style={{ borderColor: '#D1D5DB', backgroundColor: '#FFFFFF' }}
+                    />
+                  </div>
+
+                  {/* Default Notes */}
+                  <div>
+                    <label className="block text-sm font-medium mb-2" style={{ color: '#6B7280' }}>
+                      Default Notes
+                    </label>
+                    <input
+                      type="text"
+                      value={defaultNotes}
+                      onChange={(e) => setDefaultNotes(e.target.value)}
+                      placeholder="Optional notes..."
+                      className="w-full px-3 py-2 border rounded-lg text-sm"
+                      style={{ borderColor: '#D1D5DB', backgroundColor: '#FFFFFF' }}
+                    />
+                  </div>
+                </div>
               </div>
 
               <div
