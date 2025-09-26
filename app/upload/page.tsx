@@ -4,6 +4,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useDropzone } from 'react-dropzone'
 import Link from 'next/link'
+import { motion } from 'framer-motion'
 
 
 interface QueueItem {
@@ -41,9 +42,6 @@ export default function Home() {
   const [lastLogin, setLastLogin] = useState<string>('')
   const [queue, setQueue] = useState<QueueItem[]>([])
   const [status, setStatus] = useState<string>('')
-  const [showQueue, setShowQueue] = useState<boolean>(true)
-  const [isSelectMode, setIsSelectMode] = useState<boolean>(false)
-  const [draggedItem, setDraggedItem] = useState<string | null>(null)
   const [isProcessing, setIsProcessing] = useState<boolean>(false)
   const [airtableQueueItems, setAirtableQueueItems] = useState<AirtableQueueItem[]>([])
   const [isLoadingAirtableQueue, setIsLoadingAirtableQueue] = useState(false)
@@ -250,7 +248,7 @@ export default function Home() {
     // Check file sizes
     const maxSize = 10 * 1024 * 1024 // 10MB
     const oversizedFiles = acceptedFiles.filter(file => file.size > maxSize)
-    
+
     if (oversizedFiles.length > 0) {
       const fileNames = oversizedFiles.map(f => f.name).join(', ')
       alert(`The following files are too large (max 10MB): ${fileNames}`)
@@ -265,17 +263,12 @@ export default function Home() {
       return
     }
 
-    // Immediately add files to local queue with previews and enhanced fields
+    // Immediately add files to local queue and start processing
     const newQueueItems: QueueItem[] = acceptedFiles.map(file => {
-      // Create image element to get metadata
-      const img = new Image()
-      img.src = URL.createObjectURL(file)
-
       return {
         id: `local-${Date.now()}-${Math.random()}`,
         file,
         status: 'pending',
-        selected: false,
         localPreview: URL.createObjectURL(file),
         fileSize: file.size,
         // Enhanced fields with defaults
@@ -291,7 +284,12 @@ export default function Home() {
     })
 
     setQueue(prev => [...prev, ...newQueueItems])
-    setStatus(`${acceptedFiles.length} file${acceptedFiles.length !== 1 ? 's' : ''} added to local queue`)
+    setStatus(`Processing ${acceptedFiles.length} file${acceptedFiles.length !== 1 ? 's' : ''}...`)
+
+    // Automatically start processing the new files
+    setTimeout(() => {
+      processQueue()
+    }, 100) // Small delay to ensure UI updates
   }
 
   const uploadToCloudinary = async (item: QueueItem): Promise<string> => {
@@ -517,58 +515,9 @@ export default function Home() {
     }
   }
 
-  const removeFromQueue = (id: string) => {
-    setQueue(prev => {
-      const itemToRemove = prev.find(item => item.id === id)
-      // Clean up local preview URL if it exists
-      if (itemToRemove?.localPreview && itemToRemove.localPreview.startsWith('blob:')) {
-        URL.revokeObjectURL(itemToRemove.localPreview)
-      }
-      return prev.filter(item => item.id !== id)
-    })
-  }
 
 
 
-  const toggleItemSelection = (id: string) => {
-    setQueue(prev => prev.map(item => 
-      item.id === id ? { ...item, selected: !item.selected } : item
-    ))
-  }
-
-
-
-  const moveInQueue = (fromIndex: number, toIndex: number) => {
-    setQueue(prev => {
-      const newQueue = [...prev]
-      const [movedItem] = newQueue.splice(fromIndex, 1)
-      newQueue.splice(toIndex, 0, movedItem)
-      return newQueue
-    })
-  }
-
-  const handleDragStart = (e: React.DragEvent, id: string) => {
-    setDraggedItem(id)
-    e.dataTransfer.effectAllowed = 'move'
-  }
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault()
-    e.dataTransfer.dropEffect = 'move'
-  }
-
-  const handleDrop = (e: React.DragEvent, targetId: string) => {
-    e.preventDefault()
-    if (!draggedItem || draggedItem === targetId) return
-
-    const draggedIndex = queue.findIndex(item => item.id === draggedItem)
-    const targetIndex = queue.findIndex(item => item.id === targetId)
-    
-    if (draggedIndex !== -1 && targetIndex !== -1) {
-      moveInQueue(draggedIndex, targetIndex)
-    }
-    setDraggedItem(null)
-  }
 
   const clearQueue = () => {
     setQueue(prev => {
@@ -581,7 +530,6 @@ export default function Home() {
       return []
     })
     setStatus('Queue cleared')
-    setIsSelectMode(false)
   }
 
   const pendingCount = queue.filter(item => item.status === 'pending').length
@@ -682,6 +630,7 @@ export default function Home() {
                 onClick={handleSaveEmail}
                 className="px-4 py-2 text-sm rounded-lg transition-colors"
                 style={{ backgroundColor: '#f05d43', color: '#FFFFFF' }}
+                suppressHydrationWarning={true}
               >
                 Continue
               </button>
@@ -700,10 +649,24 @@ export default function Home() {
             {/* Main Upload Area */}
             <div className="flex-1 flex flex-col p-6" style={{ backgroundColor: '#FFFFFF' }}>
               <div className="text-center mb-8">
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full mb-6" style={{ backgroundColor: '#4A5555' }}>
-                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: '#D0DADA' }}>
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full mb-6 relative" style={{ backgroundColor: '#939b7e' }}>
+                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: '#4A5555' }}>
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                   </svg>
+                  <motion.div
+                    className="absolute -inset-1 rounded-full opacity-60"
+                    style={{
+                      border: '2px solid transparent',
+                      borderTopColor: '#4A5555',
+                      borderRightColor: '#4A5555'
+                    }}
+                    animate={{ rotate: 360 }}
+                    transition={{
+                      duration: 12,
+                      repeat: Infinity,
+                      ease: "linear"
+                    }}
+                  />
                 </div>
                 <h1 className="text-4xl font-bold mb-4" style={{ color: '#D0DADA' }}>Upload Your Images</h1>
                 <p className="text-xl max-w-2xl mx-auto" style={{ color: '#4A5555' }}>
@@ -746,6 +709,37 @@ export default function Home() {
                   </div>
                 </div>
               </div>
+
+              {/* Process Button */}
+              {queue.length > 0 && (
+                <div className="max-w-2xl mx-auto mb-6 text-center">
+                  <div className="flex items-center justify-center space-x-4">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></div>
+                      <span className="text-sm" style={{ color: '#4A5555' }}>Ready to process {queue.length} image{queue.length !== 1 ? 's' : ''}</span>
+                    </div>
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={clearQueue}
+                        disabled={isProcessing}
+                        className="px-4 py-2 text-sm font-medium rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-sm"
+                        style={{ backgroundColor: '#F3F4F6', color: '#6B7280', border: '1px solid #E5E7EB' }}
+                      >
+                        Clear
+                      </button>
+                      <button
+                        onClick={processQueue}
+                        disabled={isProcessing || pendingCount === 0}
+                        className="px-6 py-2 text-sm font-medium rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-sm"
+                        style={{ backgroundColor: '#f05d43', color: '#FFFFFF' }}
+                      >
+                        {isProcessing ? 'Processing...' : 'Process Images'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
 
               <div
                 {...getRootProps()}
@@ -884,187 +878,80 @@ export default function Home() {
             </div>
 
             {/* Publishing Queue Sidebar */}
-            <div className={`shadow-lg border-l transition-all duration-300 z-30 ${
-              showQueue ? 'w-80 min-w-80' : 'w-0'
-            } overflow-hidden`} style={{ backgroundColor: '#D0DADA', borderColor: '#4A5555' }}>
+            <div className="w-80 min-w-80 shadow-lg border-l transition-all duration-300 z-30" style={{ backgroundColor: '#D0DADA', borderColor: '#4A5555' }}>
               <div className="h-full flex flex-col">
                 {/* Queue Header */}
-                <div className="p-2 border-b" style={{ borderColor: '#4A5555', backgroundColor: '#8FA8A8' }}>
-                  <div className="flex justify-between items-center">
-                    <h3 className="text-sm font-semibold" style={{ color: '#4A5555' }}>Publishing Queue</h3>
+                <div className="p-3 border-b" style={{ borderColor: '#4A5555', backgroundColor: '#8FA8A8' }}>
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-semibold" style={{ color: '#4A5555' }}>
+                      Publishing Queue ({airtableQueueItems.length})
+                    </h3>
                     <button
-                      onClick={() => setShowQueue(false)}
-                      className="p-1 transition-colors"
+                      onClick={fetchAirtableQueueItems}
+                      disabled={isLoadingAirtableQueue}
+                      className="p-1.5 rounded-md transition-all disabled:opacity-50 hover:bg-white hover:bg-opacity-20"
                       style={{ color: '#4A5555' }}
+                      title="Refresh queue"
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      <svg className={`w-4 h-4 ${isLoadingAirtableQueue ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                       </svg>
                     </button>
                   </div>
-
-                  {/* Process and Clear Queue Buttons */}
-                  {queue.length > 0 && (
-                    <div className="flex space-x-1 mt-2">
-                      <button
-                        onClick={clearQueue}
-                        disabled={isProcessing}
-                        className="flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-sm"
-                        style={{ backgroundColor: '#F3F4F6', color: '#6B7280', border: '1px solid #E5E7EB' }}
-                      >
-                        Clear
-                      </button>
-                      <button
-                        onClick={processQueue}
-                        disabled={isProcessing || pendingCount === 0}
-                        className="flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-sm"
-                        style={{ backgroundColor: '#f05d43', color: '#FFFFFF' }}
-                      >
-                        {isProcessing ? 'Processing...' : 'Process'}
-                      </button>
-                    </div>
-                  )}
                 </div>
 
                 {/* Queue Items */}
                 <div className="flex-1 overflow-y-auto p-4">
-                  {queue.length > 0 ? (
+                  {airtableQueueItems.length > 0 ? (
                     <div className="space-y-3">
-                      {queue.map((item, index) => (
+                      {airtableQueueItems.map((item, index) => (
                         <div
                           key={item.id}
-                          draggable={!isSelectMode}
-                          onDragStart={(e) => handleDragStart(e, item.id)}
-                          onDragOver={handleDragOver}
-                          onDrop={(e) => handleDrop(e, item.id)}
+                          draggable={!isReorderingAirtable}
+                          onDragStart={(e) => handleAirtableDragStart(e, item.id)}
+                          onDragOver={handleAirtableDragOver}
+                          onDrop={(e) => handleAirtableDrop(e, item.id)}
                           className={`bg-gray-50 rounded-lg p-3 border border-gray-200 hover:border-gray-300 transition-all cursor-move ${
-                            draggedItem === item.id ? 'opacity-50' : ''
-                          } ${item.selected ? 'ring-2 ring-blue-500 bg-blue-50' : ''}`}
+                            draggedAirtableItem === item.id ? 'opacity-50' : ''
+                          }`}
                         >
                           <div className="flex items-start space-x-3">
-                            {/* Queue number */}
-                            <div className="w-6 h-6 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0">
-                              <span className="text-xs font-semibold text-gray-600">{index + 1}</span>
+                            {/* Queue Number */}
+                            <div className="w-7 h-7 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                              <span className="text-xs font-bold text-blue-600">#{index + 1}</span>
                             </div>
 
                             {/* Image thumbnail */}
                             <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden border border-gray-200">
-                              {item.localPreview ? (
-                                <img
-                                  src={item.localPreview}
-                                  alt={item.file.name}
-                                  className="w-full h-full object-cover"
-                                />
-                              ) : (
-                                <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                </svg>
-                              )}
+                              <img
+                                src={item.imageUrl}
+                                alt={item.fileName || 'Image'}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement
+                                  target.style.display = 'none'
+                                }}
+                              />
                             </div>
 
                             {/* File info */}
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-center space-x-2 mb-1">
-                                {isSelectMode && (
-                                  <input
-                                    type="checkbox"
-                                    checked={item.selected || false}
-                                    onChange={() => toggleItemSelection(item.id)}
-                                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                                  />
-                                )}
-                                <p className="text-sm font-medium text-gray-900 truncate">{item.file.name}</p>
+                              <div className="flex items-center justify-between mb-1">
+                                <p className="text-sm font-medium text-gray-900 truncate">{item.fileName || 'Unknown'}</p>
                               </div>
 
                               <div className="space-y-2">
                                 <div className="flex items-center justify-between">
-                                  <p className="text-xs text-gray-500">
-                                    {item.fileSize ? (item.fileSize / 1024 / 1024).toFixed(2) : '0.00'} MB
-                                  </p>
-                                  <div className="flex items-center space-x-1">
-                                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                                      item.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                                      item.status === 'uploading' ? 'bg-blue-100 text-blue-800' :
-                                      item.status === 'completed' ? 'bg-green-100 text-green-800' :
-                                      'bg-red-100 text-red-800'
-                                    }`}>
-                                      {item.status === 'completed' ? 'Ready' : item.status}
-                                    </span>
-                                    {item.cloudinaryUrl && (
-                                      <span className="text-xs text-green-600">✓ Cloudinary</span>
-                                    )}
-                                  </div>
-                                </div>
-
-                                {/* Enhanced fields display */}
-                                <div className="flex items-center space-x-3 text-xs text-gray-500">
-                                  {item.publishDate && (
-                                    <span className="flex items-center space-x-1">
-                                      <span>📅</span>
-                                      <span>{item.publishDate}</span>
-                                    </span>
-                                  )}
-                                  {item.notes && (
-                                    <span className="flex items-center space-x-1">
-                                      <span>📝</span>
-                                      <span className="truncate max-w-20" title={item.notes}>{item.notes}</span>
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-
-                              {/* Progress bar for uploading items */}
-                              {item.status === 'uploading' && item.progress !== undefined && (
-                                <div className="mt-2">
-                                  <div className="w-full bg-gray-200 rounded-full h-1">
-                                    <div
-                                      className="bg-indigo-600 h-1 rounded-full transition-all duration-300"
-                                      style={{ width: `${item.progress}%` }}
-                                    ></div>
-                                  </div>
-                                  <p className="text-xs text-gray-500 mt-1">{item.progress}%</p>
-                                </div>
-                              )}
-
-                              {/* Error message */}
-                              {item.status === 'error' && item.uploadError && (
-                                <p className="text-xs text-red-600 mt-1">{item.uploadError}</p>
-                              )}
-                            </div>
-
-                            {/* Action buttons */}
-                            <div className="flex items-center space-x-1 ml-2">
-                              {!isSelectMode && (
-                                <>
-                                  {/* Move up button */}
-                                  {index > 0 && (
-                                    <button
-                                      onClick={() => moveInQueue(index, index - 1)}
-                                      className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
-                                      title="Move up"
-                                    >
-                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-                                      </svg>
-                                    </button>
-                                  )}
-
-                                  {/* Move down button */}
-                                  {index < queue.length - 1 && (
-                                    <button
-                                      onClick={() => moveInQueue(index, index + 1)}
-                                      className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
-                                      title="Move down"
-                                    >
-                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                      </svg>
-                                    </button>
-                                  )}
-
-                                  {/* Remove button */}
+                                  <span className="text-xs px-2 py-1 rounded-full" style={{
+                                    backgroundColor: item.status === 'published' ? '#10B981' :
+                                                    item.status === 'processing' ? '#F59E0B' :
+                                                    item.status === 'failed' ? '#EF4444' : '#6B7280',
+                                    color: '#FFFFFF'
+                                  }}>
+                                    {item.status === 'queued' ? 'Queued' : item.status}
+                                  </span>
                                   <button
-                                    onClick={() => removeFromQueue(item.id)}
+                                    onClick={() => deleteAirtableQueueItem(item.id)}
                                     className="p-1 text-red-400 hover:text-red-600 transition-colors"
                                     title="Remove from queue"
                                   >
@@ -1072,8 +959,22 @@ export default function Home() {
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                     </svg>
                                   </button>
-                                </>
-                              )}
+                                </div>
+
+                                <div className="text-xs text-gray-500">
+                                  <span>Uploaded: {new Date(item.uploadDate).toLocaleDateString()}</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Drag handle */}
+                            <div className="flex flex-col space-y-0.5 items-center">
+                              <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+                              <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+                              <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+                              <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+                              <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+                              <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
                             </div>
                           </div>
                         </div>
@@ -1087,13 +988,11 @@ export default function Home() {
                         </svg>
                       </div>
                       <h3 className="text-lg font-medium text-gray-900 mb-2">Publishing Queue</h3>
-                      <p className="text-sm text-gray-500">Your uploads will appear here</p>
-                      <p className="text-xs text-gray-400 mt-2">Drag files to the drop zone to get started</p>
+                      <p className="text-sm text-gray-500">Your processed images will appear here</p>
+                      <p className="text-xs text-gray-400 mt-2">Drop images to get started</p>
                     </div>
                   )}
                 </div>
-
-
               </div>
             </div>
           </>
@@ -1116,6 +1015,7 @@ export default function Home() {
                     onClick={handleSaveEmail}
                     className="px-6 py-3 font-medium rounded-lg transition-all hover:shadow-sm"
                     style={{ backgroundColor: '#8FA8A8', color: '#FFFFFF' }}
+                    suppressHydrationWarning={true}
                   >
                     Continue
                   </button>

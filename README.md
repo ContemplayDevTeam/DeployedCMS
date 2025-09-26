@@ -1,107 +1,73 @@
-# Airtable Queue for Customers
+Console Error
 
-A professional image upload and queue management system with Airtable backend integration.
+A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:
 
-## Features
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
 
-- **Professional Landing Page** - Clean, modern design with "Upload, Queue, and Create" messaging
-- **Advanced Upload System** - Drag-and-drop file upload with size validation
-- **Queue Management** - Numbered queue with image thumbnails and drag-and-drop reordering
-- **Multi-Select Operations** - Bulk delete and manage queue items
-- **Airtable Backend** - Complete backend powered by Airtable for data storage
-- **User Authentication** - Email-based user management with verification
-- **Responsive Design** - Works perfectly on desktop and mobile devices
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
 
-## Tech Stack
+See more info here: https://nextjs.org/docs/messages/react-hydration-error
 
-- **Frontend**: Next.js 15, React 19, TypeScript
-- **Styling**: Tailwind CSS, Google Fonts (Inter + Poppins)
-- **Backend**: Airtable API
-- **File Upload**: react-dropzone
-- **Deployment**: Vercel-ready
 
-## Getting Started
+  ...
+    <InnerScrollAndFocusHandler segmentPath={[...]} focusAndScrollRef={{apply:false, ...}}>
+      <ErrorBoundary errorComponent={undefined} errorStyles={undefined} errorScripts={undefined}>
+        <LoadingBoundary loading={null}>
+          <HTTPAccessFallbackBoundary notFound={undefined} forbidden={undefined} unauthorized={undefined}>
+            <RedirectBoundary>
+              <RedirectErrorBoundary router={{...}}>
+                <InnerLayoutRouter url="/upload" tree={[...]} cacheNode={{lazyData:null, ...}} segmentPath={[...]}>
+                  <ClientPageRoot Component={function Home} searchParams={{}} params={{}}>
+                    <Home params={Promise} searchParams={Promise}>
+                      <div className="min-h-scre..." style={{...}}>
+                        <header>
+                        <div className="border-b p..." style={{...}}>
+                          <div className="max-w-7xl ...">
+                            <div className="flex justi...">
+                              <input>
+                              <button
+                                onClick={function handleSaveEmail}
+                                className="px-4 py-2 text-sm rounded-lg transition-colors"
+                                style={{backgroundColor:"#f05d43",color:"#FFFFFF"}}
+-                               fdprocessedid="ir6wke"
+                              >
++                               Continue
+                        <main ref={{current:null}} className="flex-1 flex">
+                          <div className="flex-1 fle...">
+                            <div className="text-cente...">
+                              <div className="bg-white r..." style={{...}}>
+                                <h3>
+                                <div className="flex items...">
+                                  <input>
+                                  <button
+                                    onClick={function handleSaveEmail}
+                                    className="px-6 py-3 font-medium rounded-lg transition-all hover:shadow-sm"
+                                    style={{backgroundColor:"#8FA8A8",color:"#FFFFFF"}}
+-                                   fdprocessedid="zrserk"
+                                  >
++                                   Continue
+                                ...
+                        ...
+                  ...
+app\upload\page.tsx (638:15) @ Home
 
-### Prerequisites
 
-- Node.js 18+ 
-- Airtable account with API access
-- npm or yarn
+  636 |                 suppressHydrationWarning={true}
+  637 |               />
+> 638 |               <button
+      |               ^
+  639 |                 onClick={handleSaveEmail}
+  640 |                 className="px-4 py-2 text-sm rounded-lg transition-colors"
+  641 |                 style={{ backgroundColor: '#f05d43', color: '#FFFFFF' }}
+Call Stack
+19
 
-### Installation
-
-1. Clone the repository:
-```bash
-git clone https://github.com/bvryn7/AirtableQueueForCustomers.git
-cd AirtableQueueForCustomers
-```
-
-2. Install dependencies:
-```bash
-npm install
-```
-
-3. Set up Airtable:
-   - Follow the setup instructions in `scripts/setup-airtable.md`
-   - Create your Airtable base and tables
-   - Configure your environment variables
-
-4. Create `.env.local` file:
-```env
-AIRTABLE_API_KEY=your_airtable_api_key
-AIRTABLE_BASE_ID=your_base_id
-```
-
-5. Run the development server:
-```bash
-npm run dev
-```
-
-6. Open [http://localhost:3000](http://localhost:3000) to see the application.
-
-## Airtable Integration
-
-This application uses Airtable as its backend database. The integration includes:
-
-- **User Management** - Store user information and verification status
-- **Queue Management** - Track image uploads with status and priority
-- **Real-time Updates** - Queue status updates automatically
-- **Scalable Architecture** - Easy to extend with additional features
-
-### Required Airtable Tables
-
-1. **Users Table** - User authentication and verification
-2. **Image Queue Table** - Image upload queue management
-
-See `scripts/setup-airtable.md` for detailed setup instructions.
-
-## Usage
-
-1. **Landing Page** - Users can sign up or log in with their email
-2. **Upload Page** - Drag and drop images to automatically queue them
-3. **Queue Management** - View, reorder, and manage queued images
-4. **Airtable Integration** - All data is stored and managed in Airtable
-
-## Deployment
-
-This application is ready for deployment on Vercel:
-
-1. Push your code to GitHub
-2. Connect your repository to Vercel
-3. Add your environment variables in Vercel dashboard
-4. Deploy!
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Submit a pull request
-
-## License
-
-This project is licensed under the MIT License.
-
-## Support
-
-For support, please open an issue on GitHub or contact the development team.
+Show 17 ignore-listed frame(s)
+button
+<anonymous>
+Home
+app\upload\page.tsx (638:15)
