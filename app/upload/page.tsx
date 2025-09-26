@@ -5,6 +5,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useDropzone } from 'react-dropzone'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
+import Lenis from 'lenis'
 
 
 interface QueueItem {
@@ -45,10 +46,10 @@ export default function Home() {
   const [isProcessing, setIsProcessing] = useState<boolean>(false)
   const [airtableQueueItems, setAirtableQueueItems] = useState<AirtableQueueItem[]>([])
   const [isLoadingAirtableQueue, setIsLoadingAirtableQueue] = useState(false)
-  const [showAirtableQueue, setShowAirtableQueue] = useState<boolean>(true)
   const [draggedAirtableItem, setDraggedAirtableItem] = useState<string | null>(null)
   const [isReorderingAirtable, setIsReorderingAirtable] = useState(false)
   const mainRef = useRef<HTMLDivElement>(null)
+  const sidebarScrollRef = useRef<HTMLDivElement>(null)
 
   // Enhanced fields state
   const [defaultNotes, setDefaultNotes] = useState<string>('')
@@ -102,6 +103,40 @@ export default function Home() {
       fetchAirtableQueueItems()
     }
   }, [storedEmail, fetchAirtableQueueItems])
+
+
+  // Setup Lenis smooth scrolling for sidebar
+  useEffect(() => {
+    if (!sidebarScrollRef.current) return
+
+    const lenis = new Lenis({
+      wrapper: sidebarScrollRef.current,
+      content: sidebarScrollRef.current.firstElementChild as HTMLElement,
+      duration: 0.8, // Reduced for snappier feel
+      easing: (t: number) => 1 - Math.pow(1 - t, 3), // Simpler cubic easing
+      smooth: true,
+      direction: 'vertical',
+      gestureDirection: 'vertical',
+      smoothWheel: true,
+      touchMultiplier: 2, // Better touch responsiveness
+      wheelMultiplier: 1, // Standard wheel sensitivity
+    })
+
+    let rafId: number
+
+    function raf(time: number) {
+      lenis.raf(time)
+      rafId = requestAnimationFrame(raf)
+    }
+    rafId = requestAnimationFrame(raf)
+
+    return () => {
+      lenis.destroy()
+      if (rafId) {
+        cancelAnimationFrame(rafId)
+      }
+    }
+  }, [airtableQueueItems.length]) // Re-initialize when queue items change
 
   const deleteAirtableQueueItem = async (itemId: string) => {
     console.log('🗑️ Deleting Airtable queue item:', itemId)
@@ -768,120 +803,13 @@ export default function Home() {
                 </div>
               )}
 
-              {/* Airtable Queue Section */}
-              <div className="mt-12">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center space-x-4">
-                    <h2 className="text-2xl font-bold" style={{ color: '#4A5555' }}>Image Bank</h2>
-                    {airtableQueueItems.length > 0 && (
-                      <span className="px-2 py-1 text-sm rounded-full" style={{ backgroundColor: '#e2775c', color: '#FFFFFF' }}>
-                        {airtableQueueItems.length} items
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <button
-                      onClick={fetchAirtableQueueItems}
-                      disabled={isLoadingAirtableQueue}
-                      className="flex items-center space-x-2 px-3 py-2 text-sm rounded-lg transition-colors disabled:opacity-50"
-                      style={{ backgroundColor: '#939b7e', color: '#42504d' }}
-                      title="Refresh queue"
-                    >
-                      <svg className={`w-4 h-4 ${isLoadingAirtableQueue ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                      </svg>
-                      <span>Refresh</span>
-                    </button>
-                    <button
-                      onClick={() => setShowAirtableQueue(!showAirtableQueue)}
-                      className="flex items-center space-x-2 px-3 py-2 text-sm rounded-lg transition-colors"
-                      style={{ backgroundColor: '#939b7e', color: '#42504d' }}
-                    >
-                      <span>{showAirtableQueue ? 'Hide' : 'Show'}</span>
-                      <svg className={`w-4 h-4 transition-transform ${showAirtableQueue ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-
-                {showAirtableQueue && (
-                  <div className="bg-white rounded-xl shadow-sm border" style={{ borderColor: '#E5E7EB' }}>
-                    {isLoadingAirtableQueue ? (
-                      <div className="p-8 text-center">
-                        <div className="w-8 h-8 border-2 border-transparent rounded-full spinner mx-auto" style={{ borderColor: '#8FA8A8', borderTopColor: 'transparent' }}></div>
-                        <p className="mt-4" style={{ color: '#6B7280' }}>Loading your queue...</p>
-                      </div>
-                    ) : airtableQueueItems.length > 0 ? (
-                      <div className="p-6">
-                        <div className="grid md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-2">
-                          {airtableQueueItems.map((item) => (
-                            <div 
-                              key={item.id} 
-                              draggable={!isReorderingAirtable}
-                              onDragStart={(e) => handleAirtableDragStart(e, item.id)}
-                              onDragOver={handleAirtableDragOver}
-                              onDrop={(e) => handleAirtableDrop(e, item.id)}
-                              className={`bg-gray-50 rounded-lg p-2 border border-gray-200 hover:border-gray-300 transition-all cursor-move ${
-                                draggedAirtableItem === item.id ? 'opacity-50' : ''
-                              }`}
-                            >
-                              <div className="aspect-square relative overflow-hidden rounded mb-1">
-                                <img
-                                  src={item.imageUrl}
-                                  alt={item.fileName || 'Image'}
-                                  className="w-full h-full object-cover"
-                                  onError={(e) => {
-                                    const target = e.target as HTMLImageElement
-                                    target.style.display = 'none'
-                                  }}
-                                />
-                              </div>
-                              <div className="flex items-center justify-between mb-1">
-                                <span className="text-xs px-2 py-1 rounded-full" style={{ 
-                                  backgroundColor: item.status === 'published' ? '#10B981' : 
-                                                  item.status === 'processing' ? '#F59E0B' : 
-                                                  item.status === 'failed' ? '#EF4444' : '#6B7280',
-                                  color: '#FFFFFF'
-                                }}>
-                                  {item.status === 'queued' ? `Queued` : item.status}
-                                </span>
-                              </div>
-                              <div className="text-xs mb-1" style={{ color: '#6B7280' }}>
-                                <p>Uploaded: {new Date(item.uploadDate).toLocaleDateString()}</p>
-                              </div>
-                              <button
-                                onClick={() => deleteAirtableQueueItem(item.id)}
-                                className="w-full px-1 py-0.5 text-xs font-medium rounded transition-colors"
-                                style={{ backgroundColor: '#EF4444', color: '#FFFFFF' }}
-                              >
-                                Delete
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="p-8 text-center">
-                        <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                          <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                          </svg>
-                        </div>
-                        <h3 className="text-lg font-medium text-gray-900 mb-2">No queued images</h3>
-                        <p className="text-sm text-gray-500">Your processed images will appear here</p>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
             </div>
 
             {/* Publishing Queue Sidebar */}
-            <div className="w-80 min-w-80 shadow-lg border-l transition-all duration-300 z-30" style={{ backgroundColor: '#D0DADA', borderColor: '#4A5555' }}>
+            <div className="w-80 min-w-80 max-w-80 shadow-xl border-l-2 border-r-2 border-t-2 border-b-2 transition-all duration-300 z-30 h-screen max-h-screen overflow-hidden" style={{ backgroundColor: '#D0DADA', borderColor: '#4A5555' }}>
               <div className="h-full flex flex-col">
                 {/* Queue Header */}
-                <div className="p-3 border-b" style={{ borderColor: '#4A5555', backgroundColor: '#8FA8A8' }}>
+                <div className="p-3 border-b-2 flex-shrink-0" style={{ borderColor: '#4A5555', backgroundColor: '#8FA8A8' }}>
                   <div className="flex items-center justify-between">
                     <h3 className="text-sm font-semibold" style={{ color: '#4A5555' }}>
                       Publishing Queue ({airtableQueueItems.length})
@@ -901,7 +829,10 @@ export default function Home() {
                 </div>
 
                 {/* Queue Items */}
-                <div className="flex-1 overflow-y-auto p-4">
+                <div
+                  ref={sidebarScrollRef}
+                  className="flex-1 overflow-y-auto p-4 min-h-0"
+                >
                   {airtableQueueItems.length > 0 ? (
                     <div className="space-y-3">
                       {airtableQueueItems.map((item, index) => (
