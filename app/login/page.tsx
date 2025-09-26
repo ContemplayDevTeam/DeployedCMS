@@ -57,34 +57,6 @@ export default function Login() {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#8FA8A8' }}>
-      {/* Navbar */}
-      <header className="backdrop-blur-sm shadow-sm sticky top-0 z-50 border-b" style={{ backgroundColor: '#8FA8A8', borderColor: '#4A5555' }}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-          <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#4A5555' }}>
-              <span className="font-bold text-sm" style={{ color: '#D0DADA' }}>C</span>
-            </div>
-            
-          </div>
-          <div className="flex items-center space-x-4">
-            <Link 
-              href="/login" 
-              className="text-sm font-medium transition-colors"
-              style={{ color: '#D0DADA' }}
-            >
-              Sign In
-            </Link>
-            <Link 
-              href="/signup" 
-              className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-colors"
-              style={{ color: '#D0DADA', backgroundColor: '#4A5555' }}
-            >
-              Sign Up
-            </Link>
-          </div>
-        </div>
-      </header>
-
       {/* Main Content */}
       <div className="flex min-h-screen items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
         <div className="w-full max-w-md">

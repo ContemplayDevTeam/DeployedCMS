@@ -64,59 +64,6 @@ export default function Landing() {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#8FA8A8' }}>
-      {/* Navbar */}
-      <header className="backdrop-blur-sm shadow-sm sticky top-0 z-50 border-b" style={{ backgroundColor: '#e2775c', borderColor: '#f05d43' }}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-                      <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#42504d' }}>
-                <span className="font-bold text-sm" style={{ color: '#FFFFFF' }}>C</span>
-              </div>
-
-            </div>
-                     <div className="hidden md:flex items-center space-x-4 text-sm">
-             <div className="flex items-center space-x-2">
-                               <span className="italic" style={{ color: '#FFFFFF' }}>What will you create today?</span>
-             </div>
-           </div>
-                                           <div className="flex items-center space-x-4">
-              {email ? (
-                <>
-                  <Link
-                    href="/dashboard"
-                    className="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors"
-                    style={{ color: '#42504d' }}
-                  >
-                    Dashboard
-                  </Link>
-                  <Link
-                    href="/upload"
-                    className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-colors"
-                    style={{ color: '#FFFFFF', backgroundColor: '#f05d43' }}
-                  >
-                    Upload
-                  </Link>
-                </>
-              ) : (
-               <>
-                 <Link 
-                   href="/login" 
-                   className="hidden sm:inline-flex items-center px-4 py-2 text-sm font-medium transition-colors"
-                   style={{ color: '#42504d' }}
-                 >
-                   Sign In
-                 </Link>
-                 <Link 
-                   href="/signup" 
-                   className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-colors"
-                   style={{ color: '#FFFFFF', backgroundColor: '#f05d43' }}
-                 >
-                   Get Started
-                 </Link>
-               </>
-             )}
-           </div>
-        </div>
-      </header>
 
       {/* Hero Section */}
       <section className="relative overflow-hidden" style={{ backgroundColor: '#FFFFFF' }}>
