@@ -112,14 +112,8 @@ export default function Home() {
     const lenis = new Lenis({
       wrapper: sidebarScrollRef.current,
       content: sidebarScrollRef.current.firstElementChild as HTMLElement,
-      duration: 0.8, // Reduced for snappier feel
-      easing: (t: number) => 1 - Math.pow(1 - t, 3), // Simpler cubic easing
-      smooth: true,
-      direction: 'vertical',
-      gestureDirection: 'vertical',
-      smoothWheel: true,
-      touchMultiplier: 2, // Better touch responsiveness
-      wheelMultiplier: 1, // Standard wheel sensitivity
+      duration: 0.8,
+      easing: (t: number) => 1 - Math.pow(1 - t, 3),
     })
 
     let rafId: number
