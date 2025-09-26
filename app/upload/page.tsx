@@ -39,8 +39,6 @@ interface AirtableQueueItem {
 export default function Home() {
   const [email, setEmail] = useState<string>('')
   const [storedEmail, setStoredEmail] = useState<string>('')
-  const [userAction, setUserAction] = useState<string>('')
-  const [lastLogin, setLastLogin] = useState<string>('')
   const [queue, setQueue] = useState<QueueItem[]>([])
   const [status, setStatus] = useState<string>('')
   const [isProcessing, setIsProcessing] = useState<boolean>(false)
@@ -57,17 +55,10 @@ export default function Home() {
 
   useEffect(() => {
     const saved = localStorage.getItem('uploader_email')
-    const action = localStorage.getItem('uploader_action')
-    const timestamp = localStorage.getItem('uploader_timestamp')
-    
+
     if (saved) {
       setStoredEmail(saved)
       setEmail(saved) // Pre-fill the email input
-    }
-    if (action) setUserAction(action)
-    if (timestamp) {
-      const date = new Date(timestamp)
-      setLastLogin(date.toLocaleDateString() + ' ' + date.toLocaleTimeString())
     }
   }, [])
 
@@ -235,43 +226,8 @@ export default function Home() {
     localStorage.setItem('uploader_action', 'login')
     localStorage.setItem('uploader_timestamp', new Date().toISOString())
     setStoredEmail(email)
-    setUserAction('login')
-    setLastLogin(new Date().toLocaleDateString() + ' ' + new Date().toLocaleTimeString())
   }
 
-  const handleLogout = () => {
-    // Check if there are items in local queue that haven't been processed
-    if (queue.length > 0) {
-      const hasUnprocessedItems = queue.some(item => item.status === 'pending' || item.status === 'uploading')
-      if (hasUnprocessedItems) {
-        const confirmed = confirm('You have unprocessed images in your local queue. Are you sure you want to sign out? Your unprocessed images will be lost.')
-        if (!confirmed) {
-          return
-        }
-      }
-    }
-
-    // Clear local queue when user signs out
-    setQueue(prev => {
-      // Clean up all local preview URLs
-      prev.forEach(item => {
-        if (item.localPreview && item.localPreview.startsWith('blob:')) {
-          URL.revokeObjectURL(item.localPreview)
-        }
-      })
-      return []
-    })
-    setStatus('')
-    
-    // Clear localStorage
-    localStorage.removeItem('uploader_email')
-    localStorage.removeItem('uploader_action')
-    localStorage.removeItem('uploader_timestamp')
-    setStoredEmail('')
-    setUserAction('')
-    setLastLogin('')
-    setEmail('')
-  }
 
   const onDrop = async (acceptedFiles: File[]) => {
     // Check file sizes
