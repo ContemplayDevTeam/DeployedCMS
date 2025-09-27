@@ -306,12 +306,7 @@ export default function Home() {
     setQueue(prev => [...prev, ...newQueueItems])
     setStatus(`Processing ${acceptedFiles.length} file${acceptedFiles.length !== 1 ? 's' : ''}...`)
 
-    // Automatically start processing based on email domain
-    if (shouldAutoProcess(storedEmail)) {
-      setTimeout(() => {
-        processQueue()
-      }, 100) // Small delay to ensure UI updates
-    }
+    // Images are now queued and ready for manual processing
   }
 
   const uploadToCloudinary = async (item: QueueItem): Promise<string> => {
@@ -616,24 +611,12 @@ export default function Home() {
             {/* Main Upload Area */}
             <div className="flex-1 flex flex-col p-6" style={{ backgroundColor: '#FFFFFF' }}>
               <div className="text-center mb-8">
-                <div className="mb-6 relative inline-flex">
-                  <DynamicLogo size="lg" />
-                  <motion.div
-                    className="absolute -inset-1 rounded-full opacity-60"
-                    style={{
-                      border: '2px solid transparent',
-                      borderTopColor: theme.colors.text,
-                      borderRightColor: theme.colors.text
-                    }}
-                    animate={{ rotate: 360 }}
-                    transition={{
-                      duration: 12,
-                      repeat: Infinity,
-                      ease: "linear"
-                    }}
-                  />
+                <div className="mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-4" style={{ backgroundColor: '#939b7e' }}>
+                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: '#4A5555' }}>
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                  </svg>
                 </div>
-                <h1 className="text-4xl font-bold mb-4" style={{ color: '#D0DADA' }}>Upload Your Images</h1>
+                <p className="text-lg font-semibold mb-2" style={{ color: '#4A5555' }}>Upload Your Images</p>
                 <p className="text-xl max-w-2xl mx-auto" style={{ color: '#4A5555' }}>
                   Configure your default settings below, then drag and drop your images.
                 </p>
@@ -643,18 +626,10 @@ export default function Home() {
               <div className="max-w-2xl mx-auto mb-8 p-6 rounded-xl border" style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-semibold" style={{ color: theme.colors.text }}>Upload Settings</h3>
-                  {shouldAutoProcess(storedEmail) && (
-                    <div className="flex items-center space-x-2 px-3 py-1 rounded-full" style={{ backgroundColor: theme.colors.success, color: '#FFFFFF' }}>
-                      <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-                      <span className="text-xs font-medium">Auto-Processing</span>
-                    </div>
-                  )}
-                  {!shouldAutoProcess(storedEmail) && storedEmail && (
-                    <div className="flex items-center space-x-2 px-3 py-1 rounded-full" style={{ backgroundColor: theme.colors.warning, color: '#FFFFFF' }}>
-                      <div className="w-2 h-2 bg-white rounded-full"></div>
-                      <span className="text-xs font-medium">Manual Approval</span>
-                    </div>
-                  )}
+                  <div className="flex items-center space-x-2 px-3 py-1 rounded-full" style={{ backgroundColor: theme.colors.accent, color: '#FFFFFF' }}>
+                    <div className="w-2 h-2 bg-white rounded-full"></div>
+                    <span className="text-xs font-medium">Manual Processing</span>
+                  </div>
                 </div>
                 <div className="grid md:grid-cols-2 gap-4">
 
@@ -691,25 +666,140 @@ export default function Home() {
 
 
 
-              <div
-                {...getRootProps()}
-                className="w-full border-2 border-dashed p-16 rounded-2xl cursor-pointer transition-all duration-300 shadow-sm hover:shadow-md"
-                style={{ borderColor: '#4A5555', backgroundColor: '#D0DADA' }}
-              >
-                <input {...getInputProps()} />
-                <div className="text-center">
-                  <div className="mx-auto w-20 h-20 rounded-full flex items-center justify-center mb-6" style={{ backgroundColor: '#939b7e' }}>
-                    <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: '#4A5555' }}>
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                    </svg>
-                  </div>
-                  <p className="text-xl font-semibold mb-3" style={{ color: '#4A5555' }}>Drop your images here</p>
-                  <p className="mb-4" style={{ color: '#4A5555' }}>or click to browse files</p>
-                  <div className="inline-flex items-center space-x-2 px-4 py-2 rounded-full" style={{ backgroundColor: '#8FA8A8' }}>
-                    <span className="text-sm font-medium" style={{ color: '#4A5555' }}>Supports:</span>
-                    <span className="text-xs" style={{ color: '#4A5555' }}>JPG, PNG, GIF, WebP up to 10MB</span>
+              <div className="w-full rounded-2xl overflow-hidden" style={{ backgroundColor: '#D0DADA', border: '2px solid #4A5555' }}>
+                {/* Drop Zone Header */}
+                <div
+                  {...getRootProps()}
+                  className="border-2 border-dashed p-8 cursor-pointer transition-all duration-300 hover:border-opacity-70"
+                  style={{ borderColor: '#4A5555', backgroundColor: 'transparent' }}
+                >
+                  <input {...getInputProps()} />
+                  <div className="text-center">
+                    <div className="mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-4" style={{ backgroundColor: '#939b7e' }}>
+                      <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: '#4A5555' }}>
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                      </svg>
+                    </div>
+                    <p className="text-lg font-semibold mb-2" style={{ color: '#4A5555' }}>Drop your images here</p>
+                    <p className="mb-3" style={{ color: '#4A5555' }}>or click to browse files</p>
+                    <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full" style={{ backgroundColor: '#8FA8A8' }}>
+                      <span className="text-sm font-medium" style={{ color: '#4A5555' }}>Supports:</span>
+                      <span className="text-xs" style={{ color: '#4A5555' }}>JPG, PNG, GIF, WebP up to 10MB</span>
+                    </div>
                   </div>
                 </div>
+
+                {/* Image Preview Area */}
+                {queue.length > 0 && (
+                  <div className="border-t-2 p-4" style={{ borderColor: '#4A5555', backgroundColor: '#FFFFFF' }}>
+                    <div className="flex items-center justify-between mb-4">
+                      <h4 className="text-lg font-semibold" style={{ color: '#4A5555' }}>
+                        Ready to Process ({queue.length} image{queue.length !== 1 ? 's' : ''})
+                      </h4>
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={clearQueue}
+                          disabled={isProcessing}
+                          className="px-3 py-2 text-sm rounded-lg border transition-all disabled:opacity-50 hover:bg-red-50"
+                          style={{ borderColor: '#EF4444', color: '#EF4444' }}
+                        >
+                          Clear All
+                        </button>
+                        <button
+                          onClick={processQueue}
+                          disabled={isProcessing || pendingCount === 0}
+                          className="px-6 py-2 text-sm font-medium rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                          style={{
+                            backgroundColor: isProcessing ? '#6B7280' : theme.colors.success,
+                            color: '#FFFFFF'
+                          }}
+                        >
+                          {isProcessing ? (
+                            <>
+                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                              <span>Processing...</span>
+                            </>
+                          ) : (
+                            <>
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3l14 9-14 9V3z" />
+                              </svg>
+                              <span>Process {pendingCount} Image{pendingCount !== 1 ? 's' : ''}</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Image Grid */}
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                      {queue.map((item) => (
+                        <div key={item.id} className="relative group">
+                          <div className="aspect-square rounded-lg overflow-hidden border-2 transition-all duration-200 hover:border-opacity-70" style={{ borderColor: item.status === 'error' ? '#EF4444' : item.status === 'completed' ? '#10B981' : item.status === 'uploading' ? '#F59E0B' : '#6B7280' }}>
+                            {item.localPreview && (
+                              <img
+                                src={item.localPreview}
+                                alt={item.file.name}
+                                className="w-full h-full object-cover"
+                                loading="lazy"
+                              />
+                            )}
+
+                            {/* Status Overlay */}
+                            <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
+                              <div className="text-center text-white text-xs">
+                                <p className="font-medium mb-1 truncate px-2">{item.file.name}</p>
+                                <p>{(item.file.size / 1024 / 1024).toFixed(1)} MB</p>
+                              </div>
+                            </div>
+
+                            {/* Status Badge */}
+                            <div className="absolute top-2 right-2">
+                              {item.status === 'uploading' && (
+                                <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                              )}
+                              {item.status === 'completed' && (
+                                <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                  </svg>
+                                </div>
+                              )}
+                              {item.status === 'error' && (
+                                <div className="w-6 h-6 bg-red-500 rounded-full flex items-center justify-center">
+                                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                  </svg>
+                                </div>
+                              )}
+                              {item.status === 'pending' && (
+                                <div className="w-6 h-6 bg-gray-500 rounded-full flex items-center justify-center">
+                                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                  </svg>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* File Info */}
+                          <div className="mt-2 text-xs" style={{ color: '#4A5555' }}>
+                            <p className="font-medium truncate" title={item.file.name}>{item.file.name}</p>
+                            <div className="flex justify-between mt-1">
+                              <span>{(item.file.size / 1024 / 1024).toFixed(1)} MB</span>
+                              <span className="capitalize font-medium" style={{ color: item.status === 'error' ? '#EF4444' : item.status === 'completed' ? '#10B981' : item.status === 'uploading' ? '#F59E0B' : '#6B7280' }}>
+                                {item.status}
+                              </span>
+                            </div>
+                            {item.uploadError && (
+                              <p className="text-red-500 mt-1 truncate" title={item.uploadError}>Error: {item.uploadError}</p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {status && (
