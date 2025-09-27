@@ -57,6 +57,34 @@ export default function Home() {
   const [defaultNotes, setDefaultNotes] = useState<string>('')
   const [defaultPublishDate, setDefaultPublishDate] = useState<string>(new Date().toISOString().split('T')[0])
 
+  // Function to determine if processing should be automatic based on email domain
+  const shouldAutoProcess = (email: string): boolean => {
+    if (!email) return false
+
+    const domain = email.toLowerCase().split('@')[1]
+    if (!domain) return false
+
+    // Auto-process for these domains/types:
+    // Academic institutions - research/education priority
+    if (domain.endsWith('.edu') || domain.includes('university') || domain.includes('college')) {
+      return true
+    }
+
+    // Tech companies - fast development cycles
+    const techDomains = ['google.com', 'microsoft.com', 'apple.com', 'meta.com', 'amazon.com', 'openai.com', 'anthropic.com']
+    if (techDomains.some(tech => domain.includes(tech))) {
+      return true
+    }
+
+    // Healthcare - time-sensitive
+    if (domain.includes('health') || domain.includes('medical') || domain.includes('hospital') || domain.endsWith('.med')) {
+      return true
+    }
+
+    // Government and corporate require manual approval
+    return false
+  }
+
   useEffect(() => {
     const saved = localStorage.getItem('uploader_email')
 
@@ -278,10 +306,12 @@ export default function Home() {
     setQueue(prev => [...prev, ...newQueueItems])
     setStatus(`Processing ${acceptedFiles.length} file${acceptedFiles.length !== 1 ? 's' : ''}...`)
 
-    // Automatically start processing the new files
-    setTimeout(() => {
-      processQueue()
-    }, 100) // Small delay to ensure UI updates
+    // Automatically start processing based on email domain
+    if (shouldAutoProcess(storedEmail)) {
+      setTimeout(() => {
+        processQueue()
+      }, 100) // Small delay to ensure UI updates
+    }
   }
 
   const uploadToCloudinary = async (item: QueueItem): Promise<string> => {
@@ -610,13 +640,27 @@ export default function Home() {
               </div>
 
               {/* Enhanced Upload Settings */}
-              <div className="max-w-2xl mx-auto mb-8 p-6 rounded-xl border" style={{ backgroundColor: '#F8F9FA', borderColor: '#E5E7EB' }}>
-                <h3 className="text-lg font-semibold mb-4" style={{ color: '#4A5555' }}>Upload Settings</h3>
+              <div className="max-w-2xl mx-auto mb-8 p-6 rounded-xl border" style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold" style={{ color: theme.colors.text }}>Upload Settings</h3>
+                  {shouldAutoProcess(storedEmail) && (
+                    <div className="flex items-center space-x-2 px-3 py-1 rounded-full" style={{ backgroundColor: theme.colors.success, color: '#FFFFFF' }}>
+                      <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                      <span className="text-xs font-medium">Auto-Processing</span>
+                    </div>
+                  )}
+                  {!shouldAutoProcess(storedEmail) && storedEmail && (
+                    <div className="flex items-center space-x-2 px-3 py-1 rounded-full" style={{ backgroundColor: theme.colors.warning, color: '#FFFFFF' }}>
+                      <div className="w-2 h-2 bg-white rounded-full"></div>
+                      <span className="text-xs font-medium">Manual Approval</span>
+                    </div>
+                  )}
+                </div>
                 <div className="grid md:grid-cols-2 gap-4">
 
                   {/* Publish Date */}
                   <div>
-                    <label className="block text-sm font-medium mb-2" style={{ color: '#6B7280' }}>
+                    <label className="block text-sm font-medium mb-2" style={{ color: theme.colors.textSecondary }}>
                       Publish Date
                     </label>
                     <input
@@ -624,13 +668,13 @@ export default function Home() {
                       value={defaultPublishDate}
                       onChange={(e) => setDefaultPublishDate(e.target.value)}
                       className="w-full px-3 py-2 border rounded-lg text-sm"
-                      style={{ borderColor: '#D1D5DB', backgroundColor: '#FFFFFF' }}
+                      style={{ borderColor: theme.colors.border, backgroundColor: theme.colors.background, color: theme.colors.text }}
                     />
                   </div>
 
                   {/* Default Notes */}
                   <div>
-                    <label className="block text-sm font-medium mb-2" style={{ color: '#6B7280' }}>
+                    <label className="block text-sm font-medium mb-2" style={{ color: theme.colors.textSecondary }}>
                       Default Notes
                     </label>
                     <input
@@ -639,41 +683,12 @@ export default function Home() {
                       onChange={(e) => setDefaultNotes(e.target.value)}
                       placeholder="Optional notes..."
                       className="w-full px-3 py-2 border rounded-lg text-sm"
-                      style={{ borderColor: '#D1D5DB', backgroundColor: '#FFFFFF' }}
+                      style={{ borderColor: theme.colors.border, backgroundColor: theme.colors.background, color: theme.colors.text }}
                     />
                   </div>
                 </div>
               </div>
 
-              {/* Process Button */}
-              {queue.length > 0 && (
-                <div className="max-w-2xl mx-auto mb-6 text-center">
-                  <div className="flex items-center justify-center space-x-4">
-                    <div className="flex items-center space-x-2">
-                      <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></div>
-                      <span className="text-sm" style={{ color: '#4A5555' }}>Ready to process {queue.length} image{queue.length !== 1 ? 's' : ''}</span>
-                    </div>
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={clearQueue}
-                        disabled={isProcessing}
-                        className="px-4 py-2 text-sm font-medium rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-sm"
-                        style={{ backgroundColor: '#F3F4F6', color: '#6B7280', border: '1px solid #E5E7EB' }}
-                      >
-                        Clear
-                      </button>
-                      <button
-                        onClick={processQueue}
-                        disabled={isProcessing || pendingCount === 0}
-                        className="px-6 py-2 text-sm font-medium rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-sm"
-                        style={{ backgroundColor: '#f05d43', color: '#FFFFFF' }}
-                      >
-                        {isProcessing ? 'Processing...' : 'Process Images'}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
 
 
               <div
