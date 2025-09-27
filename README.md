@@ -280,8 +280,130 @@ npm start
 
 This project is licensed under the MIT License.
 
+## 🎨 Dynamic Theme System
+
+### Current Themes
+- **Academic** (.edu, university, college) → 🎓 Blue theme, auto-processing
+- **Corporate** (.com, .org, .net) → 💼 Green theme, manual approval
+- **Government** (.gov, .mil) → 🏛️ Gray theme, manual approval
+- **Tech** (google, microsoft, apple, etc.) → ⚡ Purple gradient, auto-processing
+- **Healthcare** (.med, hospital, health, medical) → ⚕️ Medical blue, auto-processing
+- **Creative** (design, studio, agency) → 🎨 Pink/orange gradient, manual approval
+
+### 🔧 Adding New Themes (Future Reference)
+
+**Step 1: Define Theme in `/lib/themes.ts`**
+```typescript
+// Add to themes object
+newTheme: {
+  name: 'New Theme',
+  colors: {
+    primary: '#color1',      // Main brand color
+    secondary: '#color2',    // Secondary brand color
+    accent: '#color3',       // Accent/highlight color
+    background: '#color4',   // Page background
+    surface: '#color5',      // Card/surface background
+    text: '#color6',         // Primary text
+    textSecondary: '#color7',// Secondary text
+    border: '#color8',       // Border color
+    success: '#color9',      // Success state
+    warning: '#color10',     // Warning state
+    error: '#color11'        // Error state
+  },
+  logo: {
+    icon: '🆕',              // Emoji or single letter
+    bgColor: '#color1',      // Logo background
+    textColor: '#ffffff',    // Logo text color
+    shape: 'rounded',        // circle|square|rounded|hexagon
+    gradient: 'linear-gradient(135deg, #color1 0%, #color3 100%)' // Optional
+  },
+  description: 'Theme description'
+}
+```
+
+**Step 2: Add Domain Matching in `getThemeFromEmail()`**
+```typescript
+// Add domain detection logic
+if (domain.includes('keyword') || domain.endsWith('.extension')) {
+  return themes.newTheme
+}
+```
+
+**Step 3: Set Auto-Processing (Optional)**
+```typescript
+// In shouldAutoProcess() function in upload/page.tsx
+if (domain.includes('keyword')) {
+  return true // or false for manual approval
+}
+```
+
+**Step 4: Test**
+- Use ThemeSwitcher component (🎨 button)
+- Try test emails with new domain format
+- Verify colors, logo, and processing behavior
+
+## 🔄 Multi-Terminal Auto-Sync System
+
+This project includes **automatic git hooks** for seamless collaboration between multiple terminals/Claude instances.
+
+### 🚀 How It Works
+
+**Git hooks automatically handle syncing** - no manual pulling/pushing needed!
+
+```bash
+# Just work normally - hooks handle everything
+git add .
+git commit -m "my changes"  # ← Automatically pulls latest first
+git push                    # ← Automatically syncs before push
+```
+
+### 🛠️ Setup for New Terminals
+
+If you're setting up a new terminal/Claude instance:
+
+```bash
+# 1. Clone the repo
+git clone https://github.com/bvryn7/AirTableQueueforCustomers.git
+cd AirTableQueueforCustomers
+
+# 2. Install dependencies
+npm install
+
+# 3. Install auto-sync hooks
+./setup-hooks.sh
+
+# 4. Start working - hooks handle all syncing!
+```
+
+### ⚡ Active Hooks
+
+- **pre-commit**: Auto-pulls latest changes before each commit
+- **post-merge**: Auto-installs dependencies when package.json changes
+- **pre-push**: Auto-syncs with remote before pushing
+
+### 🎯 Benefits
+
+- **Zero conflicts** - hooks prevent merge conflicts automatically
+- **Always synced** - latest changes pulled before every operation
+- **Background magic** - works invisibly, no user intervention needed
+- **Multi-Claude ready** - perfect for collaborative development
+
+### 📁 Hook Files
+
+- `/.git/hooks/pre-commit` - Auto-pull before commits
+- `/.git/hooks/post-merge` - Auto-install deps after pulls
+- `/.git/hooks/pre-push` - Auto-sync before pushes
+- `/setup-hooks.sh` - Easy setup script for new terminals
+- `/AUTO_SYNC.md` - Detailed hook documentation
+
+**Result: Multiple terminals stay perfectly synced without any manual git operations!** 🎉
+
 ## 🎉 Recent Updates
 
+- ✅ Added dynamic email-based theme system with 6 themes
+- ✅ Smart auto-processing based on email domain
+- ✅ Custom logos that change per theme
+- ✅ Removed manual process buttons
 - ✅ Added Framer Motion animations
 - ✅ Implemented horizontal image carousel
 - ✅ Auto-processing on image drop

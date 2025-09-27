@@ -1,4 +1,22 @@
 // Email-based theme configuration
+//
+// 🎨 ADDING NEW THEMES - FUTURE REFERENCE:
+//
+// 1. Add new theme to `themes` object below
+// 2. Update `getThemeFromEmail()` function with domain matching logic
+// 3. Update `shouldAutoProcess()` in upload/page.tsx if auto-processing needed
+// 4. Test with ThemeSwitcher component
+//
+// Theme structure:
+// - colors: 11 required color properties (see Theme interface)
+// - logo: icon (emoji/letter), bgColor, textColor, shape, optional gradient
+// - description: user-friendly description
+//
+// Email domain matching examples:
+// - domain.endsWith('.edu') → Academic
+// - domain.includes('bank') → Financial
+// - techDomains.includes(domain) → Tech
+//
 
 export interface Theme {
   name: string
