@@ -6,6 +6,9 @@ import { useDropzone } from 'react-dropzone'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import Lenis from 'lenis'
+import { useTheme } from '../../components/ThemeProvider'
+import { DynamicLogo } from '../../components/DynamicLogo'
+import { ThemeSwitcher } from '../../components/ThemeSwitcher'
 
 
 interface QueueItem {
@@ -37,6 +40,7 @@ interface AirtableQueueItem {
 }
 
 export default function Home() {
+  const { theme, setEmailTheme } = useTheme()
   const [email, setEmail] = useState<string>('')
   const [storedEmail, setStoredEmail] = useState<string>('')
   const [queue, setQueue] = useState<QueueItem[]>([])
@@ -221,7 +225,10 @@ export default function Home() {
       return []
     })
     setStatus('')
-    
+
+    // Set theme based on email
+    setEmailTheme(email)
+
     localStorage.setItem('uploader_email', email)
     localStorage.setItem('uploader_action', 'login')
     localStorage.setItem('uploader_timestamp', new Date().toISOString())
@@ -539,11 +546,12 @@ export default function Home() {
   })
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#8FA8A8' }}>
+    <div className="min-h-screen flex flex-col" style={{ backgroundColor: theme.colors.primary }}>
+      <ThemeSwitcher />
 
       {/* Email Input for non-logged in users */}
       {!storedEmail && (
-        <div className="border-b py-4 z-40 transition-all duration-300 ease-in-out" style={{ backgroundColor: '#939b7e', borderColor: '#42504d' }}>
+        <div className="border-b py-4 z-40 transition-all duration-300 ease-in-out" style={{ backgroundColor: theme.colors.secondary, borderColor: theme.colors.border }}>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-center items-center space-x-3">
               <input
@@ -578,16 +586,14 @@ export default function Home() {
             {/* Main Upload Area */}
             <div className="flex-1 flex flex-col p-6" style={{ backgroundColor: '#FFFFFF' }}>
               <div className="text-center mb-8">
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full mb-6 relative" style={{ backgroundColor: '#939b7e' }}>
-                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: '#4A5555' }}>
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                  </svg>
+                <div className="mb-6 relative inline-flex">
+                  <DynamicLogo size="lg" />
                   <motion.div
                     className="absolute -inset-1 rounded-full opacity-60"
                     style={{
                       border: '2px solid transparent',
-                      borderTopColor: '#4A5555',
-                      borderRightColor: '#4A5555'
+                      borderTopColor: theme.colors.text,
+                      borderRightColor: theme.colors.text
                     }}
                     animate={{ rotate: 360 }}
                     transition={{

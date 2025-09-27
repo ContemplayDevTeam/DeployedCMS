@@ -3,6 +3,19 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+
+  /* Dynamic theme variables */
+  --color-primary: #8FA8A8;
+  --color-secondary: #4A5555;
+  --color-accent: #f05d43;
+  --color-background: #FFFFFF;
+  --color-surface: #D0DADA;
+  --color-text: #4A5555;
+  --color-text-secondary: #6B7280;
+  --color-border: #42504d;
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-error: #ef4444;
 }
 
 @theme inline {
