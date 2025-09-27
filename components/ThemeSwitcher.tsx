@@ -5,13 +5,9 @@ import { useTheme } from './ThemeProvider'
 import { DynamicLogo } from './DynamicLogo'
 
 const demoEmails = [
-  'student@university.edu',
-  'john@company.com',
-  'jane@government.gov',
-  'dev@google.com',
-  'nurse@hospital.med',
-  'artist@designstudio.com',
-  'user@example.org'
+  'user@example.com',
+  'test@demo.org',
+  'sample@test.net'
 ]
 
 export function ThemeSwitcher() {
