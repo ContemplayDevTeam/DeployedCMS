@@ -599,10 +599,12 @@ export default function Home() {
               <div className="max-w-2xl mx-auto mb-8 p-6 rounded-xl border" style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-semibold" style={{ color: theme.colors.text }}>Upload Settings</h3>
-                  <div className="flex items-center space-x-2 px-3 py-1 rounded-full" style={{ backgroundColor: theme.colors.accent, color: '#FFFFFF' }}>
-                    <div className="w-2 h-2 bg-white rounded-full"></div>
-                    <span className="text-xs font-medium">Manual Processing</span>
-                  </div>
+                  {shouldAutoProcess(storedEmail) && (
+                    <div className="flex items-center space-x-2 px-3 py-1 rounded-full" style={{ backgroundColor: theme.colors.success, color: '#FFFFFF' }}>
+                      <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                      <span className="text-xs font-medium">Auto-Processing</span>
+                    </div>
+                  )}
                 </div>
                 <div className="grid md:grid-cols-2 gap-4">
 
