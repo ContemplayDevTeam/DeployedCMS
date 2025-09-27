@@ -65,6 +65,9 @@ export default function Home() {
       setStoredEmail(saved)
       setEmail(saved) // Pre-fill the email input
     }
+
+    // Ensure page starts at top on load
+    window.scrollTo(0, 0)
   }, [])
 
   const fetchAirtableQueueItems = useCallback(async () => {
@@ -584,10 +587,26 @@ export default function Home() {
             {/* Main Upload Area */}
             <div className="flex-1 flex flex-col p-6" style={{ backgroundColor: '#FFFFFF' }}>
               <div className="text-center mb-8">
-                <div className="mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-4" style={{ backgroundColor: '#939b7e' }}>
-                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: '#4A5555' }}>
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                  </svg>
+                <div className="relative mx-auto w-16 h-16 mb-4">
+                  <motion.div
+                    className="absolute inset-0 rounded-full"
+                    style={{
+                      border: '2px solid transparent',
+                      borderTopColor: theme.colors.text,
+                      borderRightColor: theme.colors.text
+                    }}
+                    animate={{ rotate: 360 }}
+                    transition={{
+                      duration: 12,
+                      repeat: Infinity,
+                      ease: "linear"
+                    }}
+                  />
+                  <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{ backgroundColor: '#939b7e' }}>
+                    <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: '#4A5555' }}>
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    </svg>
+                  </div>
                 </div>
                 <p className="text-lg font-semibold mb-2" style={{ color: '#4A5555' }}>Upload Your Images</p>
                 <p className="text-xl max-w-2xl mx-auto" style={{ color: '#4A5555' }}>
@@ -599,12 +618,6 @@ export default function Home() {
               <div className="max-w-2xl mx-auto mb-8 p-6 rounded-xl border" style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-semibold" style={{ color: theme.colors.text }}>Upload Settings</h3>
-                  {shouldAutoProcess(storedEmail) && (
-                    <div className="flex items-center space-x-2 px-3 py-1 rounded-full" style={{ backgroundColor: theme.colors.success, color: '#FFFFFF' }}>
-                      <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-                      <span className="text-xs font-medium">Auto-Processing</span>
-                    </div>
-                  )}
                 </div>
                 <div className="grid md:grid-cols-2 gap-4">
 
@@ -657,41 +670,24 @@ export default function Home() {
                     </div>
                     <p className="text-lg font-semibold mb-2" style={{ color: '#4A5555' }}>Drop your images here</p>
                     <p className="mb-3" style={{ color: '#4A5555' }}>or click to browse files</p>
-                    <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full" style={{ backgroundColor: '#8FA8A8' }}>
-                      <span className="text-sm font-medium" style={{ color: '#4A5555' }}>Supports:</span>
-                      <span className="text-xs" style={{ color: '#4A5555' }}>JPG, PNG, GIF, WebP up to 10MB</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Image Preview Area */}
-                {queue.length > 0 && (
-                  <div className="border-t-2 p-4" style={{ borderColor: '#4A5555', backgroundColor: '#FFFFFF' }}>
-                    <div className="flex items-center justify-between mb-4">
-                      <h4 className="text-lg font-semibold" style={{ color: '#4A5555' }}>
-                        Ready to Process ({queue.length} image{queue.length !== 1 ? 's' : ''})
-                      </h4>
-                      <div className="flex items-center space-x-2">
-                        <button
-                          onClick={clearQueue}
-                          disabled={isProcessing}
-                          className="px-3 py-2 text-sm rounded-lg border transition-all disabled:opacity-50 hover:bg-red-50"
-                          style={{ borderColor: '#EF4444', color: '#EF4444' }}
-                        >
-                          Clear All
-                        </button>
+                    <div className="flex items-center justify-center space-x-4 mb-4">
+                      <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full" style={{ backgroundColor: '#8FA8A8' }}>
+                        <span className="text-sm font-medium" style={{ color: '#4A5555' }}>Supports:</span>
+                        <span className="text-xs" style={{ color: '#4A5555' }}>JPG, PNG, GIF, WebP up to 10MB</span>
+                      </div>
+                      {pendingCount > 0 && (
                         <button
                           onClick={processQueue}
-                          disabled={isProcessing || pendingCount === 0}
-                          className="px-6 py-2 text-sm font-medium rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                          disabled={isProcessing}
+                          className="px-4 py-2 text-sm font-medium rounded-full transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
                           style={{
-                            backgroundColor: isProcessing ? '#6B7280' : theme.colors.success,
-                            color: '#FFFFFF'
+                            backgroundColor: isProcessing ? '#6B7280' : '#939b7e',
+                            color: '#4A5555'
                           }}
                         >
                           {isProcessing ? (
                             <>
-                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                              <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
                               <span>Processing...</span>
                             </>
                           ) : (
@@ -699,11 +695,30 @@ export default function Home() {
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3l14 9-14 9V3z" />
                               </svg>
-                              <span>Process {pendingCount} Image{pendingCount !== 1 ? 's' : ''}</span>
+                              <span>Process {pendingCount}</span>
                             </>
                           )}
                         </button>
-                      </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Image Preview Area - Integrated in drop zone */}
+                {queue.length > 0 && (
+                  <div className="p-6 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-lg font-semibold" style={{ color: '#4A5555' }}>
+                        {queue.length} image{queue.length !== 1 ? 's' : ''} queued
+                      </h4>
+                      <button
+                        onClick={clearQueue}
+                        disabled={isProcessing}
+                        className="px-3 py-2 text-sm rounded-full border transition-all disabled:opacity-50 hover:bg-red-50"
+                        style={{ borderColor: '#8FA8A8', color: '#4A5555', backgroundColor: '#8FA8A8' }}
+                      >
+                        Clear All
+                      </button>
                     </div>
 
                     {/* Image Grid */}
@@ -786,12 +801,12 @@ export default function Home() {
             </div>
 
             {/* Publishing Queue Sidebar */}
-            <div className="w-80 min-w-80 max-w-80 shadow-xl border-l-2 border-r-2 border-t-2 border-b-2 transition-all duration-300 z-30 h-screen max-h-screen overflow-hidden" style={{ backgroundColor: '#D0DADA', borderColor: '#4A5555' }}>
+            <div className="w-80 min-w-80 max-w-80 shadow-lg border-l transition-all duration-300 z-30 h-screen max-h-screen overflow-hidden" style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
               <div className="h-full flex flex-col">
                 {/* Queue Header */}
-                <div className="p-3 border-b-2 flex-shrink-0" style={{ borderColor: '#4A5555', backgroundColor: '#8FA8A8' }}>
+                <div className="p-3 border-b flex-shrink-0" style={{ borderColor: theme.colors.border, backgroundColor: theme.colors.secondary }}>
                   <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-semibold" style={{ color: '#4A5555' }}>
+                    <h3 className="text-sm font-semibold" style={{ color: theme.colors.text }}>
                       Publishing Queue ({airtableQueueItems.length})
                       {pendingCount > 0 && <span className="ml-2 text-xs">({pendingCount} pending)</span>}
                     </h3>
@@ -812,7 +827,7 @@ export default function Home() {
                         onClick={fetchAirtableQueueItems}
                         disabled={isLoadingAirtableQueue || isProcessing}
                         className="p-1.5 rounded-md transition-all disabled:opacity-50 hover:bg-white hover:bg-opacity-20"
-                        style={{ color: '#4A5555' }}
+                        style={{ color: theme.colors.textSecondary }}
                         title="Refresh queue"
                       >
                         <svg className={`w-4 h-4 ${isLoadingAirtableQueue ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
