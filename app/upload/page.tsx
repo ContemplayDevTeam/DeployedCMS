@@ -57,33 +57,6 @@ export default function Home() {
   const [defaultNotes, setDefaultNotes] = useState<string>('')
   const [defaultPublishDate, setDefaultPublishDate] = useState<string>(new Date().toISOString().split('T')[0])
 
-  // Function to determine if processing should be automatic based on email domain
-  const shouldAutoProcess = (email: string): boolean => {
-    if (!email) return false
-
-    const domain = email.toLowerCase().split('@')[1]
-    if (!domain) return false
-
-    // Auto-process for these domains/types:
-    // Academic institutions - research/education priority
-    if (domain.endsWith('.edu') || domain.includes('university') || domain.includes('college')) {
-      return true
-    }
-
-    // Tech companies - fast development cycles
-    const techDomains = ['google.com', 'microsoft.com', 'apple.com', 'meta.com', 'amazon.com', 'openai.com', 'anthropic.com']
-    if (techDomains.some(tech => domain.includes(tech))) {
-      return true
-    }
-
-    // Healthcare - time-sensitive
-    if (domain.includes('health') || domain.includes('medical') || domain.includes('hospital') || domain.endsWith('.med')) {
-      return true
-    }
-
-    // Government and corporate require manual approval
-    return false
-  }
 
   useEffect(() => {
     const saved = localStorage.getItem('uploader_email')
@@ -304,7 +277,7 @@ export default function Home() {
     })
 
     setQueue(prev => [...prev, ...newQueueItems])
-    setStatus(`Processing ${acceptedFiles.length} file${acceptedFiles.length !== 1 ? 's' : ''}...`)
+    setStatus(`Added ${acceptedFiles.length} file${acceptedFiles.length !== 1 ? 's' : ''} to queue`)
 
     // Images are now queued and ready for manual processing
   }
