@@ -103,7 +103,7 @@ export default function Home() {
     const lenis = new Lenis({
       wrapper: sidebarScrollRef.current,
       content: sidebarScrollRef.current.firstElementChild as HTMLElement,
-      duration: 0.8,
+      duration: 0.1,
       easing: (t: number) => 1 - Math.pow(1 - t, 3),
     })
 
@@ -752,6 +752,8 @@ export default function Home() {
                                 src={item.imageUrl}
                                 alt={item.fileName || 'Image'}
                                 className="w-full h-full object-cover"
+                                loading="lazy"
+                                decoding="async"
                                 onError={(e) => {
                                   const target = e.target as HTMLImageElement
                                   target.style.display = 'none'

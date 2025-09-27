@@ -1,0 +1,33 @@
+{
+  "name": "AirTable Queue for Customers",
+  "short_name": "AirTable Queue",
+  "description": "Upload and manage images with queue processing",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#8FA8A8",
+  "theme_color": "#4A5555",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon-192x192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon-512x512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any"
+    }
+  ],
+  "categories": ["productivity", "photo"],
+  "screenshots": [
+    {
+      "src": "/screenshot-wide.png",
+      "type": "image/png",
+      "sizes": "1280x720",
+      "form_factor": "wide"
+    }
+  ]
+}
