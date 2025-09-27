@@ -3,7 +3,6 @@
 import Link from "next/link"
 import { Disclosure } from '@headlessui/react'
 import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline'
-import { motion } from 'framer-motion'
 
 export function Header() {
   return (
@@ -16,27 +15,11 @@ export function Header() {
               <div className="flex">
                 <div className="flex flex-shrink-0 items-center">
                   <Link href="/" className="flex items-center space-x-2">
-                    <div className="relative">
-                      <div className="h-8 w-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#42504d' }}>
-                        <span className="font-bold text-sm text-white">AQ</span>
-                      </div>
-                      <motion.div
-                        className="absolute -inset-1 rounded-lg opacity-60"
-                        style={{
-                          border: '2px solid transparent',
-                          borderTopColor: '#4A5555',
-                          borderRightColor: '#4A5555'
-                        }}
-                        animate={{ rotate: 360 }}
-                        transition={{
-                          duration: 12,
-                          repeat: Infinity,
-                          ease: "linear"
-                        }}
-                      />
+                    <div className="h-8 w-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#42504d' }}>
+                      <span className="font-bold text-sm text-white">AQ</span>
                     </div>
                     <span className="hidden font-bold sm:block text-white">
-                      AirTable Queue
+                      Experience Queue
                     </span>
                   </Link>
                 </div>
