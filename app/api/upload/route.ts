@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import sharp from 'sharp'
 
 // Helper function for retrying network requests with exponential backoff
 async function retryRequest<T>(
@@ -6,28 +7,28 @@ async function retryRequest<T>(
   maxRetries: number = 3,
   baseDelay: number = 1000
 ): Promise<T> {
-  let lastError: any
+  let lastError: unknown
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       return await requestFn()
-    } catch (error: any) {
+    } catch (error: unknown) {
       lastError = error
 
       // Check if it's a network error that we should retry
       const isRetryableError =
-        error?.cause?.code === 'ECONNRESET' ||
-        error?.cause?.code === 'ETIMEDOUT' ||
-        error?.cause?.code === 'ENOTFOUND' ||
-        error?.message?.includes('fetch failed') ||
-        error?.message?.includes('network')
+        (error as { cause?: { code?: string } })?.cause?.code === 'ECONNRESET' ||
+        (error as { cause?: { code?: string } })?.cause?.code === 'ETIMEDOUT' ||
+        (error as { cause?: { code?: string } })?.cause?.code === 'ENOTFOUND' ||
+        (error as { message?: string })?.message?.includes('fetch failed') ||
+        (error as { message?: string })?.message?.includes('network')
 
       if (!isRetryableError || attempt === maxRetries) {
         throw error
       }
 
       const delay = baseDelay * Math.pow(2, attempt - 1) // Exponential backoff
-      console.log(`🔄 Retry attempt ${attempt}/${maxRetries} in ${delay}ms due to: ${error?.cause?.code || error?.message}`)
+      console.log(`🔄 Retry attempt ${attempt}/${maxRetries} in ${delay}ms due to: ${(error as { cause?: { code?: string } })?.cause?.code || (error as { message?: string })?.message}`)
 
       await new Promise(resolve => setTimeout(resolve, delay))
     }
@@ -170,12 +171,12 @@ export async function POST(request: NextRequest) {
     const arrayBuffer = await file.arrayBuffer()
     const buffer = Buffer.from(arrayBuffer)
     console.log('✅ File converted to Buffer, size:', buffer.length, 'bytes')
-    
+
     // Validate buffer is not empty
     if (buffer.length === 0) {
       console.error('❌ Buffer is empty after conversion')
       return NextResponse.json(
-        { 
+        {
           error: 'File buffer is empty after conversion',
           fileName: file.name,
           fileSize: file.size,
@@ -185,26 +186,66 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Encode as base64 data URI
-    console.log('📖 Converting to base64 data URI...')
-    const base64Data = buffer.toString('base64')
-    
-    // Validate base64 data
-    if (!base64Data || base64Data.length === 0) {
-      console.error('❌ Base64 conversion failed - empty result')
+    // Convert image to WebP format using Sharp
+    console.log('🔄 Converting image to WebP format...')
+    let processedBuffer: Buffer
+    let processedFileName: string
+    let processedMimeType: string
+
+    try {
+      processedBuffer = await sharp(buffer)
+        .webp({
+          quality: 90, // High quality WebP
+          effort: 6    // Better compression
+        })
+        .toBuffer()
+
+      // Update filename to have .webp extension
+      const nameWithoutExt = file.name.replace(/\.[^/.]+$/, "")
+      processedFileName = `${nameWithoutExt}.webp`
+      processedMimeType = 'image/webp'
+
+      console.log('✅ Image converted to WebP successfully')
+      console.log('📏 Original size:', buffer.length, 'bytes')
+      console.log('📏 WebP size:', processedBuffer.length, 'bytes')
+      console.log('📈 Compression ratio:', Math.round((1 - processedBuffer.length / buffer.length) * 100) + '%')
+      console.log('📝 Original filename:', file.name)
+      console.log('📝 New filename:', processedFileName)
+
+    } catch (conversionError) {
+      console.error('❌ WebP conversion failed:', conversionError)
       return NextResponse.json(
-        { 
-          error: 'Base64 conversion failed',
+        {
+          error: 'Failed to convert image to WebP format',
+          conversionError: conversionError instanceof Error ? conversionError.message : 'Unknown conversion error',
           fileName: file.name,
           fileSize: file.size,
-          fileType: file.type,
-          bufferSize: buffer.length
+          fileType: file.type
         },
         { status: 400 }
       )
     }
-    
-    const dataUri = `data:${file.type};base64,${base64Data}`
+
+    // Encode as base64 data URI
+    console.log('📖 Converting WebP to base64 data URI...')
+    const base64Data = processedBuffer.toString('base64')
+
+    // Validate base64 data
+    if (!base64Data || base64Data.length === 0) {
+      console.error('❌ Base64 conversion failed - empty result')
+      return NextResponse.json(
+        {
+          error: 'Base64 conversion failed',
+          fileName: processedFileName,
+          fileSize: processedBuffer.length,
+          fileType: processedMimeType,
+          bufferSize: processedBuffer.length
+        },
+        { status: 400 }
+      )
+    }
+
+    const dataUri = `data:${processedMimeType};base64,${base64Data}`
     console.log('✅ Base64 data URI created, length:', dataUri.length)
     console.log('📏 Base64 data length:', base64Data.length)
 
@@ -231,22 +272,23 @@ export async function POST(request: NextRequest) {
     
     // Sanitize filename for Cloudinary display name compatibility
     // Remove or replace disallowed characters (slashes, backslashes, etc.)
-    const sanitizedFileName = file.name
+    const sanitizedFileName = processedFileName
       .replace(/[\/\\:*?"<>|]/g, '_')  // Replace Windows/Unix invalid chars
       .replace(/[^a-zA-Z0-9._-]/g, '_') // Replace any other non-alphanumeric chars
       .replace(/_+/g, '_')             // Replace multiple underscores with single
       .replace(/^_|_$/g, '')           // Remove leading/trailing underscores
-    
+
     // Create a unique public_id with timestamp to avoid conflicts
     const timestamp = Date.now()
     const publicId = `upload_${timestamp}_${sanitizedFileName}`
-    
+
     console.log('📝 Original filename:', file.name)
+    console.log('📝 Processed filename:', processedFileName)
     console.log('🧹 Sanitized filename:', sanitizedFileName)
     console.log('🆔 Public ID:', publicId)
-    
+
     params.append('public_id', publicId)
-    
+
     // Use filename_override for unsigned uploads to control the display name
     params.append('filename_override', sanitizedFileName)
     
@@ -315,13 +357,18 @@ export async function POST(request: NextRequest) {
           uploadDetails: {
             cloudName,
             uploadPreset,
-            fileSize: file.size,
-            fileType: file.type,
+            originalFileSize: file.size,
+            originalFileType: file.type,
+            processedFileSize: processedBuffer.length,
+            processedFileType: processedMimeType,
             dataUriLength: dataUri.length
           },
-          fileName: file.name,
-          fileSize: file.size,
-          fileType: file.type,
+          originalFileName: file.name,
+          processedFileName: processedFileName,
+          originalFileSize: file.size,
+          processedFileSize: processedBuffer.length,
+          originalFileType: file.type,
+          processedFileType: processedMimeType,
           timestamp: new Date().toISOString()
         },
         { status: 500 }
@@ -334,9 +381,13 @@ export async function POST(request: NextRequest) {
     const response = {
       success: true,
       imageUrl: uploadResult.secure_url,
-      fileName: file.name,
-      fileSize: file.size,
-      fileType: file.type,
+      originalFileName: file.name,
+      processedFileName: processedFileName,
+      originalFileSize: file.size,
+      processedFileSize: processedBuffer.length,
+      originalFileType: file.type,
+      processedFileType: processedMimeType,
+      compressionRatio: Math.round((1 - processedBuffer.length / buffer.length) * 100),
       uploadTime: new Date().toISOString()
     }
     

@@ -23,7 +23,10 @@ export default function FileDropzone({ getRootProps, getInputProps }: FileDropzo
         <p className="mb-4" style={{ color: '#4A5555' }}>or click to browse files</p>
         <div className="inline-flex items-center space-x-2 px-4 py-2 rounded-full" style={{ backgroundColor: '#8FA8A8' }}>
           <span className="text-sm font-medium" style={{ color: '#4A5555' }}>Supports:</span>
-          <span className="text-xs" style={{ color: '#4A5555' }}>JPG, PNG, GIF, WebP up to 10MB</span>
+          <span className="text-xs" style={{ color: '#4A5555' }}>JPG, PNG, GIF up to 10MB</span>
+        </div>
+        <div className="mt-2 text-xs" style={{ color: '#6B7280' }}>
+          ✨ All images are automatically converted to WebP for optimal compression
         </div>
       </div>
     </div>
