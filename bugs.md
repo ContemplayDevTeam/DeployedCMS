@@ -1,6 +1,46 @@
 Runtime Error - RESOLVED ✅
 Console Error - RESOLVED ✅
+new bug: Intermittent Network Connectivity Issues
 
+**Error:** Network timeouts and connection resets during Cloudinary uploads
+
+**Symptoms:**
+- `ECONNRESET` errors during upload to Cloudinary
+- Uploads sometimes take 79+ seconds before failing
+- `TypeError: fetch failed` with connection reset
+
+**Location:** `app\upload\page.tsx` during Cloudinary upload process
+
+**✅ RESOLUTION APPLIED:**
+Enhanced network error handling with graceful retry logic and user-friendly error messages:
+
+**Improvements Made:**
+1. **Retry Logic with Exponential Backoff** - `app/api/upload/route.ts:4-37`
+   - Automatic retry for network errors (ECONNRESET, ETIMEDOUT, ENOTFOUND)
+   - 3 retry attempts with 2-second base delay
+   - Exponential backoff (2s, 4s, 8s)
+
+2. **Request Timeout Protection** - `app/api/upload/route.ts:280`
+   - 2-minute timeout to prevent hanging requests
+   - `signal: AbortSignal.timeout(120000)`
+
+3. **Enhanced Error Messages** - `app/api/upload/route.ts:349-392`
+   - User-friendly error messages for common network issues
+   - Specific guidance for different error types
+   - Retryable flag to indicate retry possibility
+
+4. **Frontend Error Handling** - `app/upload/page.tsx:309-332`
+   - Parse and display user-friendly error messages
+   - Graceful fallback for JSON parsing errors
+   - Better error messaging in UI
+
+**Error Types Handled:**
+- `ECONNRESET`: "Upload failed due to network connection reset. Please check your connection and try again."
+- `ETIMEDOUT`: "Upload timed out. Please try uploading a smaller image or check your internet connection."
+- `ENOTFOUND`: "Could not connect to upload service. Please check your internet connection."
+- `fetch failed`: "Network error occurred during upload. Please try again in a moment."
+
+**Result:** Much more resilient upload system with automatic retries and better user feedback during network issues.
 **Resolution:** Fixed delete error handling to treat 403/404 errors as success since they indicate item already deleted.
 
 **Root Cause:** UI was sending multiple delete requests for same item. First delete succeeded, subsequent requests got 403 "item not found" which was incorrectly treated as failure.
@@ -56,7 +96,7 @@ Show 27 ignore-listed frame
 
 ---
 
-## 🚨 **CURRENT ERROR: Airtable Status Field Configuration Missing**
+## ✅ **RESOLVED: Airtable Status Field Removed - RESOLVED ✅**
 
 **Error:** `INVALID_MULTIPLE_CHOICE_OPTIONS` - Insufficient permissions to create new select option "queued"
 
@@ -112,7 +152,21 @@ app\upload\page.tsx (476:17)
 - Server restarted on port 3007 with updated code
 - Uploads should now work without 422 errors
 
-**Long-term Fix:** Re-add Status field to Airtable base or use alternative status tracking.
+**✅ FINAL RESOLUTION (2025-09-28):**
+Since the Status field was permanently deleted from the Airtable base, all Status field references have been completely removed from the codebase:
+
+**Changes Made:**
+1. **Removed Status field from QueueItem interface** - `lib/airtable.ts:16-30`
+2. **Removed Status field assignment in queueImage method** - `lib/airtable.ts:271`
+3. **Removed updateQueueItemStatus method** - No longer needed since Status field doesn't exist
+4. **Updated UI to show "In Queue" instead of status-based badges** - `app/upload/page.tsx:892-894`
+5. **Removed all Status field references from queue display logic**
+
+**Files Modified:**
+- `lib/airtable.ts` - Removed Status field from interface, payload, and all related methods
+- `app/upload/page.tsx` - Simplified queue item display to show "In Queue" status
+
+**Result:** Upload functionality now works without Status field errors. Queue items are successfully added to Airtable without attempting to set non-existent Status field.
 
 ---
 

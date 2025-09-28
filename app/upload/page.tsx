@@ -307,10 +307,28 @@ export default function Home() {
     console.log('📡 Upload response ok:', uploadResponse.ok)
 
     if (!uploadResponse.ok) {
-      const errorText = await uploadResponse.text()
-      console.error('❌ Upload failed with status:', uploadResponse.status)
-      console.error('❌ Error response:', errorText)
-      throw new Error(`Failed to upload ${item.file.name} to Cloudinary: ${uploadResponse.status} ${uploadResponse.statusText}`)
+      let errorMessage = `Failed to upload ${item.file.name}`
+
+      try {
+        const errorData = await uploadResponse.json()
+        console.error('❌ Upload failed with status:', uploadResponse.status)
+        console.error('❌ Error response:', errorData)
+
+        // Use the user-friendly message if available
+        if (errorData.userMessage) {
+          errorMessage = errorData.userMessage
+        } else if (errorData.error) {
+          errorMessage = errorData.error
+        }
+      } catch (parseError) {
+        // Fallback to text if JSON parsing fails
+        const errorText = await uploadResponse.text()
+        console.error('❌ Upload failed with status:', uploadResponse.status)
+        console.error('❌ Error response:', errorText)
+        errorMessage = `Upload failed: ${uploadResponse.status} ${uploadResponse.statusText}`
+      }
+
+      throw new Error(errorMessage)
     }
 
     const uploadResult = await uploadResponse.json()
@@ -676,17 +694,21 @@ export default function Home() {
                       </div>
                       {pendingCount > 0 && (
                         <button
-                          onClick={processQueue}
+                          onClick={(e) => {
+                            e.stopPropagation(); // Prevent file browser from opening
+                            processQueue();
+                          }}
                           disabled={isProcessing}
-                          className="px-4 py-2 text-sm font-medium rounded-full transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                          className="px-4 py-2 text-sm font-medium rounded-full transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 hover:brightness-110"
                           style={{
-                            backgroundColor: isProcessing ? '#6B7280' : '#939b7e',
-                            color: '#4A5555'
+                            backgroundColor: isProcessing ? '#6B7280' : '#8FA8A8',
+                            color: '#FFFFFF',
+                            boxShadow: pendingCount > 0 ? '0 0 10px rgba(143, 168, 168, 0.5)' : 'none'
                           }}
                         >
                           {isProcessing ? (
                             <>
-                              <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
+                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                               <span>Processing...</span>
                             </>
                           ) : (
@@ -702,6 +724,7 @@ export default function Home() {
                     </div>
                   </div>
                 </div>
+
 
                 {/* Image Preview Area - Integrated in drop zone */}
                 {queue.length > 0 && (
@@ -884,13 +907,8 @@ export default function Home() {
 
                               <div className="space-y-2">
                                 <div className="flex items-center justify-between">
-                                  <span className="text-xs px-2 py-1 rounded-full" style={{
-                                    backgroundColor: item.status === 'published' ? '#10B981' :
-                                                    item.status === 'processing' ? '#F59E0B' :
-                                                    item.status === 'failed' ? '#EF4444' : '#6B7280',
-                                    color: '#FFFFFF'
-                                  }}>
-                                    {item.status === 'queued' ? 'Queued' : item.status}
+                                  <span className="text-xs px-2 py-1 rounded-full bg-blue-500 text-white">
+                                    In Queue
                                   </span>
                                   <button
                                     onClick={() => deleteAirtableQueueItem(item.id)}

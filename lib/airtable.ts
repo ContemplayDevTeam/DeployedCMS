@@ -19,7 +19,6 @@ interface QueueItem {
   imageUrl: string
   fileName: string
   fileSize: number
-  status: 'queued' | 'processing' | 'published' | 'failed'
   uploadDate: string
   publishDate?: string
   publishTime?: string
@@ -260,7 +259,7 @@ export class AirtableBackend {
     try {
       console.log('📤 Starting image queue process for user:', userEmail)
 
-      // Prepare the payload - include Status field and all required fields
+      // Prepare the payload with all required fields
       const publishDate = imageData.publishDate || new Date().toISOString().split('T')[0]
 
       const fields: Record<string, unknown> = {
@@ -268,7 +267,6 @@ export class AirtableBackend {
         'Image URL': imageData.url,
         'File Name': imageData.name,
         'File Size': imageData.size,
-        // 'Status': 'queued', // TEMPORARY FIX: Commented out to avoid 422 error - let Airtable use default
         'Upload Date': new Date().toISOString().split('T')[0],
         'Publish Date': publishDate
       }
@@ -316,7 +314,6 @@ export class AirtableBackend {
         imageUrl: record.fields['Image URL'] as string,
         fileName: record.fields['File Name'] as string,
         fileSize: record.fields['File Size'] as number,
-        status: record.fields['Status'] as 'queued' | 'processing' | 'published' | 'failed',
         uploadDate: record.fields['Upload Date'] as string,
         publishDate: record.fields['Publish Date'] as string,
         publishTime: record.fields['Publish Time'] as string,
@@ -353,7 +350,6 @@ export class AirtableBackend {
         imageUrl: record.fields['Image URL'] as string,
         fileName: record.fields['File Name'] as string || 'Unknown',
         fileSize: record.fields['File Size'] as number || 0,
-        status: (record.fields['Status'] as 'queued' | 'processing' | 'published' | 'failed') || 'queued',
         uploadDate: record.fields['Upload Date'] as string,
         publishDate: record.fields['Publish Date'] as string,
         publishTime: record.fields['Publish Time'] as string,
@@ -367,32 +363,7 @@ export class AirtableBackend {
     }
   }
 
-  async updateQueueItemStatus(recordId: string, status: 'queued' | 'processing' | 'published' | 'failed'): Promise<boolean> {
-    try {
-      const updateData: Record<string, unknown> = {
-        'Status': status // Always update the status field
-      }
-
-      // Update publish date when status changes to published
-      if (status === 'published') {
-        updateData['Publish Date'] = new Date().toISOString().split('T')[0] // Date-only format (YYYY-MM-DD)
-      }
-
-      await this.makeRequest(`/${this.tableIds.queue}`, {
-        method: 'PATCH',
-        body: JSON.stringify({
-          records: [{
-            id: recordId,
-            fields: updateData
-          }]
-        })
-      })
-      return true
-    } catch (error) {
-      console.error('Error updating queue item status:', error)
-      return false
-    }
-  }
+  // updateQueueItemStatus method removed - Status field no longer exists in Airtable
 
   async deleteQueueItem(recordId: string): Promise<boolean> {
     try {
@@ -664,7 +635,6 @@ export class AirtableBackend {
         imageUrl: record.fields['Image URL'] as string,
         fileName: record.fields['File Name'] as string || 'Unknown',
         fileSize: record.fields['File Size'] as number || 0,
-        status: (record.fields['Status'] as 'queued' | 'processing' | 'published' | 'failed') || 'queued',
         uploadDate: record.fields['Upload Date'] as string,
         publishDate: record.fields['Publish Date'] as string,
         publishTime: record.fields['Publish Time'] as string,

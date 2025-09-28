@@ -1,5 +1,41 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+// Helper function for retrying network requests with exponential backoff
+async function retryRequest<T>(
+  requestFn: () => Promise<T>,
+  maxRetries: number = 3,
+  baseDelay: number = 1000
+): Promise<T> {
+  let lastError: any
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await requestFn()
+    } catch (error: any) {
+      lastError = error
+
+      // Check if it's a network error that we should retry
+      const isRetryableError =
+        error?.cause?.code === 'ECONNRESET' ||
+        error?.cause?.code === 'ETIMEDOUT' ||
+        error?.cause?.code === 'ENOTFOUND' ||
+        error?.message?.includes('fetch failed') ||
+        error?.message?.includes('network')
+
+      if (!isRetryableError || attempt === maxRetries) {
+        throw error
+      }
+
+      const delay = baseDelay * Math.pow(2, attempt - 1) // Exponential backoff
+      console.log(`🔄 Retry attempt ${attempt}/${maxRetries} in ${delay}ms due to: ${error?.cause?.code || error?.message}`)
+
+      await new Promise(resolve => setTimeout(resolve, delay))
+    }
+  }
+
+  throw lastError
+}
+
 export async function POST(request: NextRequest) {
   console.log('🚀 Upload route called')
   
@@ -224,23 +260,27 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Upload to Cloudinary using REST API
-    console.log('☁️ Uploading to Cloudinary...')
+    // Upload to Cloudinary using REST API with retry logic
+    console.log('☁️ Uploading to Cloudinary with retry logic...')
     console.log('🔗 Upload URL:', `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`)
     console.log('📋 Upload preset:', uploadPreset)
     console.log('📏 Data URI length:', dataUri.length)
     console.log('📏 Data URI preview:', dataUri.substring(0, 100) + '...')
-    
-    const uploadResponse = await fetch(
-      `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: params,
-      }
-    )
+
+    const uploadResponse = await retryRequest(async () => {
+      return await fetch(
+        `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: params,
+          // Add timeout to prevent hanging
+          signal: AbortSignal.timeout(120000) // 2 minute timeout
+        }
+      )
+    }, 3, 2000) // 3 retries with 2 second base delay
 
     console.log('📡 Cloudinary response status:', uploadResponse.status)
     console.log('📡 Cloudinary response headers:', Object.fromEntries(uploadResponse.headers.entries()))
@@ -305,27 +345,48 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('💥 Upload route error:', error)
-    
-    // Provide detailed error information
+
+    // Provide user-friendly error messages
     let errorMessage = 'Failed to upload image'
+    let userMessage = 'Upload failed due to an unexpected error'
     let errorDetails = {}
-    
+
     if (error instanceof Error) {
-      errorMessage = error.message
       errorDetails = {
         name: error.name,
         stack: error.stack,
-        message: error.message
+        message: error.message,
+        cause: error.cause
+      }
+
+      // Provide specific user-friendly messages for common network errors
+      if (error.cause?.code === 'ECONNRESET') {
+        userMessage = 'Upload failed due to network connection reset. Please check your connection and try again.'
+        errorMessage = 'Network connection was reset during upload'
+      } else if (error.cause?.code === 'ETIMEDOUT' || error.message.includes('timeout')) {
+        userMessage = 'Upload timed out. Please try uploading a smaller image or check your internet connection.'
+        errorMessage = 'Upload request timed out'
+      } else if (error.cause?.code === 'ENOTFOUND') {
+        userMessage = 'Could not connect to upload service. Please check your internet connection.'
+        errorMessage = 'DNS resolution failed for upload service'
+      } else if (error.message.includes('fetch failed')) {
+        userMessage = 'Network error occurred during upload. Please try again in a moment.'
+        errorMessage = 'Network request failed'
+      } else {
+        errorMessage = error.message
+        userMessage = 'Upload failed. Please try again or contact support if the problem persists.'
       }
     }
-    
+
     console.error('📋 Error details:', errorDetails)
-    
+
     return NextResponse.json(
-      { 
+      {
         error: errorMessage,
+        userMessage: userMessage,
         details: errorDetails,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        retryable: true // Indicate that the user can retry this operation
       },
       { status: 500 }
     )
