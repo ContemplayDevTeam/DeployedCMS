@@ -6,7 +6,6 @@ import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { useTheme } from '../../components/ThemeProvider'
 import { DynamicLogo } from '../../components/DynamicLogo'
-import { ThemeSwitcher } from '../../components/ThemeSwitcher'
 
 export default function Login() {
   const router = useRouter()
@@ -75,8 +74,6 @@ export default function Login() {
     <div className="min-h-screen relative overflow-hidden" style={{
       background: `linear-gradient(135deg, ${theme.colors.primary} 0%, ${theme.colors.secondary} 50%, ${theme.colors.accent} 100%)`
     }}>
-      <ThemeSwitcher />
-
       {/* Animated Background Elements */}
       <div className="absolute inset-0 overflow-hidden">
         <motion.div

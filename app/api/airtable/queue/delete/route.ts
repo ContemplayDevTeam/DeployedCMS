@@ -3,13 +3,17 @@ import { AirtableBackend } from '@/lib/airtable'
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('🚀 DELETE API endpoint called')
     const { recordId } = await request.json()
 
+    console.log('📥 Received recordId:', recordId)
+
     if (!recordId) {
+      console.log('❌ No recordId provided')
       return NextResponse.json({ error: 'Record ID is required' }, { status: 400 })
     }
 
-    console.log('Attempting to delete record:', recordId)
+    console.log('🗑️ Attempting to delete record:', recordId)
 
     const apiKey = process.env.AIRTABLE_API_KEY
     const baseId = process.env.AIRTABLE_BASE_ID

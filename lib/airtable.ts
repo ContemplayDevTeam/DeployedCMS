@@ -80,7 +80,13 @@ export class AirtableBackend {
         throw new Error(`Airtable API error: ${response.status} ${response.statusText} - ${errorText}`)
       }
 
-      const responseData = await response.json()
+      // Handle DELETE requests which may not return JSON
+      let responseData
+      if (response.headers.get('content-length') === '0' || response.status === 204) {
+        responseData = {} // Empty response for successful DELETE
+      } else {
+        responseData = await response.json()
+      }
       console.log('✅ Airtable request successful')
       return responseData
     } catch (error) {
@@ -391,12 +397,12 @@ export class AirtableBackend {
   async deleteQueueItem(recordId: string): Promise<boolean> {
     try {
       console.log('🔍 Deleting queue item with record ID:', recordId)
-      console.log('🔗 Making DELETE request to:', `/${this.tableIds.queue}?records[]=${recordId}`)
-      
-      await this.makeRequest(`/${this.tableIds.queue}?records[]=${recordId}`, {
+      console.log('🔗 Making DELETE request to:', `/${this.tableIds.queue}/${recordId}`)
+
+      await this.makeRequest(`/${this.tableIds.queue}/${recordId}`, {
         method: 'DELETE'
       })
-      
+
       console.log('✅ Successfully deleted queue item:', recordId)
       return true
     } catch (error) {

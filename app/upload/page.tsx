@@ -8,7 +8,6 @@ import { motion } from 'framer-motion'
 import Lenis from 'lenis'
 import { useTheme } from '../../components/ThemeProvider'
 import { DynamicLogo } from '../../components/DynamicLogo'
-import { ThemeSwitcher } from '../../components/ThemeSwitcher'
 
 
 interface QueueItem {
@@ -148,7 +147,8 @@ export default function Home() {
         setAirtableQueueItems(prev => prev.filter(item => item.id !== itemId))
         console.log('✅ Successfully deleted item from Airtable and frontend')
       } else {
-        console.error('❌ Failed to delete item from Airtable')
+        const errorData = await response.text()
+        console.error('❌ Failed to delete item from Airtable. Status:', response.status, 'Response:', errorData)
         alert('Failed to delete item from queue')
       }
     } catch (error) {
@@ -548,7 +548,6 @@ export default function Home() {
 
   return (
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: theme.colors.primary }}>
-      <ThemeSwitcher />
 
       {/* Email Input for non-logged in users */}
       {!storedEmail && (
