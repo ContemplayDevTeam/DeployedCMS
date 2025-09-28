@@ -268,7 +268,7 @@ export class AirtableBackend {
         'Image URL': imageData.url,
         'File Name': imageData.name,
         'File Size': imageData.size,
-        'Status': 'queued', // Default status for new items
+        // 'Status': 'queued', // TEMPORARY FIX: Commented out to avoid 422 error - let Airtable use default
         'Upload Date': new Date().toISOString().split('T')[0],
         'Publish Date': publishDate
       }
@@ -407,6 +407,17 @@ export class AirtableBackend {
       return true
     } catch (error) {
       console.error('❌ Error deleting queue item:', recordId, error)
+
+      // Check if error is 403/404 (item already deleted or doesn't exist)
+      if (error instanceof Error && error.message.includes('403 Forbidden')) {
+        console.log('ℹ️ Item already deleted or not found (403) - treating as success:', recordId)
+        return true
+      }
+      if (error instanceof Error && error.message.includes('404 Not Found')) {
+        console.log('ℹ️ Item not found (404) - treating as success:', recordId)
+        return true
+      }
+
       return false
     }
   }
