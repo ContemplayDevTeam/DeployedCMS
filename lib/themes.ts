@@ -67,6 +67,31 @@ export const themes: Record<string, Theme> = {
       shape: 'rounded'
     },
     description: 'Original app theme'
+  },
+
+  // Homegrown National Park theme
+  homegrownnationalpark: {
+    name: 'Homegrown National Park',
+    colors: {
+      primary: '#e8d0a9',      // Warm cream
+      secondary: '#5e8770',    // Forest green
+      accent: '#e9c2b3',       // Soft peach
+      background: '#fefcfa',   // Off-white background
+      surface: '#f5f1eb',      // Light cream surface
+      text: '#3a4a3e',         // Dark forest green
+      textSecondary: '#6b7c6e', // Medium forest green
+      border: '#d4c4a8',       // Muted cream border
+      success: '#5e8770',      // Forest green for success
+      warning: '#e8d0a9',      // Warm cream for warnings
+      error: '#c67c5c'         // Earthy red for errors
+    },
+    logo: {
+      icon: '🌲',              // Tree emoji for national park
+      bgColor: '#5e8770',      // Forest green background
+      textColor: '#ffffff',    // White text
+      shape: 'circle'          // Circular shape
+    },
+    description: 'Earthy national park theme with natural colors'
   }
 }
 
@@ -76,6 +101,11 @@ export function getThemeFromEmail(email: string): Theme {
   const domain = email.toLowerCase().split('@')[1]
   if (!domain) return themes.default
 
+  // Homegrown National Park theme
+  if (domain === 'homegrownnationalpark.org') {
+    return themes.homegrownnationalpark
+  }
+
   // Add your custom themes here
   // Example:
   // if (domain.endsWith('.example.com')) {
@@ -83,6 +113,17 @@ export function getThemeFromEmail(email: string): Theme {
   // }
 
   return themes.default
+}
+
+// Test function to get theme by URL parameter for demo purposes
+export function getThemeForTesting(email: string, testTheme?: string): Theme {
+  // Check for test parameter first (for demo purposes)
+  if (testTheme && themes[testTheme]) {
+    return themes[testTheme]
+  }
+
+  // Fall back to email-based theme detection
+  return getThemeFromEmail(email)
 }
 
 export function applyTheme(theme: Theme) {

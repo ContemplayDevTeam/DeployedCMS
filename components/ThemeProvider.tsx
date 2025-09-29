@@ -1,7 +1,7 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
-import { Theme, themes, getThemeFromEmail, applyTheme } from '../lib/themes'
+import { Theme, themes, getThemeFromEmail, getThemeForTesting, applyTheme } from '../lib/themes'
 
 interface ThemeContextType {
   theme: Theme
@@ -28,7 +28,11 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
   const [currentThemeName, setCurrentThemeName] = useState('default')
 
   const setEmailTheme = (email: string) => {
-    const newTheme = getThemeFromEmail(email)
+    // Check for URL parameter override for testing
+    const urlParams = new URLSearchParams(window.location.search)
+    const testTheme = urlParams.get('theme')
+
+    const newTheme = getThemeForTesting(email, testTheme || undefined)
     setTheme(newTheme)
     setCurrentThemeName(newTheme.name.toLowerCase())
 
@@ -39,7 +43,8 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
     localStorage.setItem('user_email', email)
     localStorage.setItem('theme_name', newTheme.name.toLowerCase())
 
-    console.log(`🎨 Theme switched to: ${newTheme.name} for email: ${email}`)
+    const themeSource = testTheme ? `(test parameter: ${testTheme})` : '(email-based)'
+    console.log(`🎨 Theme switched to: ${newTheme.name} for email: ${email} ${themeSource}`)
   }
 
   // Load theme from localStorage on mount
@@ -47,8 +52,18 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
     const savedEmail = localStorage.getItem('user_email')
     const savedTheme = localStorage.getItem('theme_name')
 
+    // Check for URL parameter override for testing
+    const urlParams = new URLSearchParams(window.location.search)
+    const testTheme = urlParams.get('theme')
+
     if (savedEmail) {
       setEmailTheme(savedEmail)
+    } else if (testTheme && themes[testTheme]) {
+      const loadedTheme = themes[testTheme]
+      setTheme(loadedTheme)
+      setCurrentThemeName(testTheme)
+      applyTheme(loadedTheme)
+      console.log(`🎨 Theme loaded from URL parameter: ${testTheme}`)
     } else if (savedTheme && themes[savedTheme]) {
       const loadedTheme = themes[savedTheme]
       setTheme(loadedTheme)

@@ -3,10 +3,13 @@
 import Link from "next/link"
 import { Disclosure } from '@headlessui/react'
 import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline'
+import { useTheme } from './ThemeProvider'
+import { DynamicLogo } from './DynamicLogo'
 
 export function Header() {
+  const { theme } = useTheme()
   return (
-    <Disclosure as="nav" className="sticky top-0 z-50 border-b shadow-sm" style={{ backgroundColor: '#e2775c', borderColor: '#f05d43' }}>
+    <Disclosure as="nav" className="sticky top-0 z-50 border-b shadow-sm" style={{ backgroundColor: theme.colors.primary, borderColor: theme.colors.accent }}>
       {({ open }) => (
         <>
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -15,10 +18,8 @@ export function Header() {
               <div className="flex">
                 <div className="flex flex-shrink-0 items-center">
                   <Link href="/" className="flex items-center space-x-2">
-                    <div className="h-8 w-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#42504d' }}>
-                      <span className="font-bold text-sm text-white">AQ</span>
-                    </div>
-                    <span className="hidden font-bold sm:block text-white">
+                    <DynamicLogo />
+                    <span className="hidden font-bold sm:block" style={{ color: theme.colors.text }}>
                       Experience Queue
                     </span>
                   </Link>
@@ -29,21 +30,21 @@ export function Header() {
                   <Link
                     href="/upload"
                     className="inline-flex items-center px-1 pt-1 text-sm font-medium transition-colors hover:opacity-80"
-                    style={{ color: '#42504d' }}
+                    style={{ color: theme.colors.text }}
                   >
                     Upload
                   </Link>
                   <Link
                     href="/dashboard"
                     className="inline-flex items-center px-1 pt-1 text-sm font-medium transition-colors hover:opacity-80"
-                    style={{ color: '#42504d' }}
+                    style={{ color: theme.colors.text }}
                   >
                     Dashboard
                   </Link>
                   <Link
                     href="/landing"
                     className="inline-flex items-center px-1 pt-1 text-sm font-medium transition-colors hover:opacity-80"
-                    style={{ color: '#42504d' }}
+                    style={{ color: theme.colors.text }}
                   >
                     Features
                   </Link>
@@ -62,7 +63,7 @@ export function Header() {
                 <Link
                   href="/signup"
                   className="inline-flex items-center rounded-lg px-4 py-2 text-sm font-medium transition-all hover:shadow-md hover:opacity-90"
-                  style={{ color: '#FFFFFF', backgroundColor: '#f05d43' }}
+                  style={{ color: theme.colors.background, backgroundColor: theme.colors.accent }}
                 >
                   Get Started
                 </Link>
@@ -71,7 +72,7 @@ export function Header() {
               {/* Mobile menu button */}
               <div className="-mr-2 flex items-center md:hidden">
                 <Disclosure.Button className="inline-flex items-center justify-center rounded-md p-2 transition-colors hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-inset"
-                  style={{ color: '#42504d', '--tw-ring-color': '#42504d' } as React.CSSProperties}>
+                  style={{ color: theme.colors.text, '--tw-ring-color': theme.colors.text } as React.CSSProperties}>
                   <span className="sr-only">Open main menu</span>
                   {open ? (
                     <XMarkIcon className="block h-6 w-6" aria-hidden="true" />
@@ -85,7 +86,7 @@ export function Header() {
 
           {/* Mobile menu */}
           <Disclosure.Panel className="md:hidden">
-            <div className="space-y-1 pb-3 pt-2" style={{ backgroundColor: '#d96b4f' }}>
+            <div className="space-y-1 pb-3 pt-2" style={{ backgroundColor: theme.colors.surface }}>
               <Disclosure.Button
                 as={Link}
                 href="/upload"
@@ -111,7 +112,7 @@ export function Header() {
                 Features
               </Disclosure.Button>
             </div>
-            <div className="border-t pb-3 pt-4" style={{ borderColor: '#f05d43', backgroundColor: '#d96b4f' }}>
+            <div className="border-t pb-3 pt-4" style={{ borderColor: theme.colors.accent, backgroundColor: theme.colors.surface }}>
               <div className="space-y-1">
                 <Disclosure.Button
                   as={Link}
@@ -125,7 +126,7 @@ export function Header() {
                   as={Link}
                   href="/signup"
                   className="block py-2 pl-3 pr-4 text-base font-medium transition-colors hover:opacity-80"
-                  style={{ color: '#FFFFFF' }}
+                  style={{ color: theme.colors.background }}
                 >
                   Get Started
                 </Disclosure.Button>
