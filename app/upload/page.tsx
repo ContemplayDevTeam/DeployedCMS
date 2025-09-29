@@ -588,13 +588,13 @@ export default function Home() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Enter your email to continue"
                 className="px-4 py-2 text-sm border rounded-lg focus:ring-2 focus:border-transparent w-64"
-                style={{ borderColor: '#f05d43', backgroundColor: '#FFFFFF', color: '#42504d' }}
+                style={{ borderColor: theme.colors.accent, backgroundColor: theme.colors.background, color: theme.colors.text }}
                 suppressHydrationWarning={true}
               />
               <button
                 onClick={handleSaveEmail}
                 className="px-4 py-2 text-sm rounded-lg transition-colors"
-                style={{ backgroundColor: '#f05d43', color: '#FFFFFF' }}
+                style={{ backgroundColor: theme.colors.accent, color: theme.colors.background }}
                 suppressHydrationWarning={true}
               >
                 Continue
@@ -612,7 +612,7 @@ export default function Home() {
         {storedEmail ? (
           <>
             {/* Main Upload Area */}
-            <div className="flex-1 flex flex-col p-6" style={{ backgroundColor: '#FFFFFF' }}>
+            <div className="flex-1 flex flex-col p-6" style={{ backgroundColor: theme.colors.background }}>
               <div className="text-center mb-8">
                 <div className="relative mx-auto w-16 h-16 mb-4">
                   <motion.div
@@ -629,14 +629,14 @@ export default function Home() {
                       ease: "linear"
                     }}
                   />
-                  <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{ backgroundColor: '#939b7e' }}>
-                    <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: '#4A5555' }}>
+                  <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{ backgroundColor: theme.colors.secondary }}>
+                    <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: theme.colors.background }}>
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                     </svg>
                   </div>
                 </div>
-                <p className="text-lg font-semibold mb-2" style={{ color: '#4A5555' }}>Upload Your Images</p>
-                <p className="text-xl max-w-2xl mx-auto" style={{ color: '#4A5555' }}>
+                <p className="text-lg font-semibold mb-2" style={{ color: theme.colors.text }}>Upload Your Images</p>
+                <p className="text-xl max-w-2xl mx-auto" style={{ color: theme.colors.text }}>
                   Configure your default settings below, then drag and drop your images.
                 </p>
               </div>
@@ -711,26 +711,26 @@ export default function Home() {
 
 
 
-              <div className="w-full rounded-2xl overflow-hidden" style={{ backgroundColor: '#D0DADA', border: '2px solid #4A5555' }}>
+              <div className="w-full rounded-2xl overflow-hidden" style={{ backgroundColor: theme.colors.surface, border: `2px solid ${theme.colors.text}` }}>
                 {/* Drop Zone Header */}
                 <div
                   {...getRootProps()}
                   className="border-2 border-dashed p-8 cursor-pointer transition-all duration-300 hover:border-opacity-70"
-                  style={{ borderColor: '#4A5555', backgroundColor: 'transparent' }}
+                  style={{ borderColor: theme.colors.text, backgroundColor: 'transparent' }}
                 >
                   <input {...getInputProps()} />
                   <div className="text-center">
-                    <div className="mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-4" style={{ backgroundColor: '#939b7e' }}>
-                      <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: '#4A5555' }}>
+                    <div className="mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-4" style={{ backgroundColor: theme.colors.secondary }}>
+                      <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: theme.colors.background }}>
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                       </svg>
                     </div>
-                    <p className="text-lg font-semibold mb-2" style={{ color: '#4A5555' }}>Drop your images here</p>
-                    <p className="mb-3" style={{ color: '#4A5555' }}>or click to browse files</p>
+                    <p className="text-lg font-semibold mb-2" style={{ color: theme.colors.text }}>Drop your images here</p>
+                    <p className="mb-3" style={{ color: theme.colors.text }}>or click to browse files</p>
                     <div className="flex items-center justify-center space-x-4 mb-4">
-                      <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full" style={{ backgroundColor: '#8FA8A8' }}>
-                        <span className="text-sm font-medium" style={{ color: '#4A5555' }}>Supports:</span>
-                        <span className="text-xs" style={{ color: '#4A5555' }}>JPG, PNG, GIF, WebP up to 10MB</span>
+                      <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full" style={{ backgroundColor: theme.colors.primary }}>
+                        <span className="text-sm font-medium" style={{ color: theme.colors.text }}>Supports:</span>
+                        <span className="text-xs" style={{ color: theme.colors.text }}>JPG, PNG, GIF, WebP up to 10MB</span>
                       </div>
                       {pendingCount > 0 && (
                         <button
@@ -741,8 +741,8 @@ export default function Home() {
                           disabled={isProcessing}
                           className="px-4 py-2 text-sm font-medium rounded-full transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 hover:brightness-110"
                           style={{
-                            backgroundColor: isProcessing ? '#6B7280' : '#8FA8A8',
-                            color: '#FFFFFF',
+                            backgroundColor: isProcessing ? theme.colors.textSecondary : theme.colors.primary,
+                            color: theme.colors.background,
                             boxShadow: pendingCount > 0 ? '0 0 10px rgba(143, 168, 168, 0.5)' : 'none'
                           }}
                         >
@@ -770,14 +770,14 @@ export default function Home() {
                 {queue.length > 0 && (
                   <div className="p-6 space-y-4">
                     <div className="flex items-center justify-between">
-                      <h4 className="text-lg font-semibold" style={{ color: '#4A5555' }}>
+                      <h4 className="text-lg font-semibold" style={{ color: theme.colors.text }}>
                         {queue.length} image{queue.length !== 1 ? 's' : ''} queued
                       </h4>
                       <button
                         onClick={clearQueue}
                         disabled={isProcessing}
                         className="px-3 py-2 text-sm rounded-full border transition-all disabled:opacity-50 hover:bg-red-50"
-                        style={{ borderColor: '#8FA8A8', color: '#4A5555', backgroundColor: '#8FA8A8' }}
+                        style={{ borderColor: theme.colors.primary, color: theme.colors.text, backgroundColor: theme.colors.primary }}
                       >
                         Clear All
                       </button>
@@ -787,7 +787,7 @@ export default function Home() {
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                       {queue.map((item) => (
                         <div key={item.id} className="relative group">
-                          <div className="aspect-square rounded-lg overflow-hidden border-2 transition-all duration-200 hover:border-opacity-70" style={{ borderColor: item.status === 'error' ? '#EF4444' : item.status === 'completed' ? '#10B981' : item.status === 'uploading' ? '#F59E0B' : '#6B7280' }}>
+                          <div className="aspect-square rounded-lg overflow-hidden border-2 transition-all duration-200 hover:border-opacity-70" style={{ borderColor: item.status === 'error' ? theme.colors.error : item.status === 'completed' ? theme.colors.success : item.status === 'uploading' ? theme.colors.warning : theme.colors.textSecondary }}>
                             {item.localPreview && (
                               <img
                                 src={item.localPreview}
@@ -835,11 +835,11 @@ export default function Home() {
                           </div>
 
                           {/* File Info */}
-                          <div className="mt-2 text-xs" style={{ color: '#4A5555' }}>
+                          <div className="mt-2 text-xs" style={{ color: theme.colors.text }}>
                             <p className="font-medium truncate" title={item.file.name}>{item.file.name}</p>
                             <div className="flex justify-between mt-1">
                               <span>{(item.file.size / 1024 / 1024).toFixed(1)} MB</span>
-                              <span className="capitalize font-medium" style={{ color: item.status === 'error' ? '#EF4444' : item.status === 'completed' ? '#10B981' : item.status === 'uploading' ? '#F59E0B' : '#6B7280' }}>
+                              <span className="capitalize font-medium" style={{ color: item.status === 'error' ? theme.colors.error : item.status === 'completed' ? theme.colors.success : item.status === 'uploading' ? theme.colors.warning : theme.colors.textSecondary }}>
                                 {item.status}
                               </span>
                             </div>
@@ -999,8 +999,8 @@ export default function Home() {
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center p-8">
             <div className="text-center max-w-md">
-              <div className="bg-white rounded-xl shadow-sm border p-6" style={{ borderColor: '#E5E7EB' }}>
-                <h3 className="text-lg font-semibold mb-4" style={{ color: '#4A5555' }}>Sign In</h3>
+              <div className="bg-white rounded-xl shadow-sm border p-6" style={{ borderColor: theme.colors.border }}>
+                <h3 className="text-lg font-semibold mb-4" style={{ color: theme.colors.text }}>Sign In</h3>
                 <div className="flex items-center space-x-3 mb-4">
                   <input
                     type="email"
@@ -1008,19 +1008,19 @@ export default function Home() {
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="Enter your email address"
                     className="flex-1 px-4 py-3 border rounded-lg focus:ring-2 focus:border-transparent transition-all"
-                    style={{ borderColor: '#D1D5DB', backgroundColor: '#FFFFFF', color: '#4A5555' }}
+                    style={{ borderColor: theme.colors.border, backgroundColor: theme.colors.background, color: theme.colors.text }}
                     suppressHydrationWarning={true}
                   />
                   <button
                     onClick={handleSaveEmail}
                     className="px-6 py-3 font-medium rounded-lg transition-all hover:shadow-sm"
-                    style={{ backgroundColor: '#8FA8A8', color: '#FFFFFF' }}
+                    style={{ backgroundColor: theme.colors.primary, color: theme.colors.background }}
                     suppressHydrationWarning={true}
                   >
                     Continue
                   </button>
                 </div>
-                <p className="text-sm" style={{ color: '#6B7280' }}>
+                <p className="text-sm" style={{ color: theme.colors.textSecondary }}>
                   Don&apos;t have an account? Just enter your email to get started.
                 </p>
               </div>
@@ -1030,19 +1030,19 @@ export default function Home() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t py-6" style={{ backgroundColor: '#4A5555', borderColor: '#8FA8A8' }}>
+      <footer className="border-t py-6" style={{ backgroundColor: theme.colors.secondary, borderColor: theme.colors.primary }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center">
             <div className="flex items-center space-x-2">
-              <div className="w-6 h-6 rounded flex items-center justify-center" style={{ backgroundColor: '#8FA8A8' }}>
-                <span className="font-bold text-xs" style={{ color: '#D0DADA' }}>C</span>
+              <div className="w-6 h-6 rounded flex items-center justify-center" style={{ backgroundColor: theme.colors.primary }}>
+                <span className="font-bold text-xs" style={{ color: theme.colors.surface }}>C</span>
               </div>
 
             </div>
             
-            <div className="flex items-center space-x-6 text-sm" style={{ color: '#D0DADA' }}>
-              <Link href="#" className="transition-colors" style={{ color: '#D0DADA' }}>Help</Link>
-              <Link href="#" className="transition-colors" style={{ color: '#D0DADA' }}>Support</Link>
+            <div className="flex items-center space-x-6 text-sm" style={{ color: theme.colors.surface }}>
+              <Link href="#" className="transition-colors" style={{ color: theme.colors.surface }}>Help</Link>
+              <Link href="#" className="transition-colors" style={{ color: theme.colors.surface }}>Support</Link>
 
             </div>
           </div>
