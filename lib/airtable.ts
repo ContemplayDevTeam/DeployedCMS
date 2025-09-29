@@ -26,6 +26,7 @@ interface QueueItem {
   tags?: string[]
   processingTime?: number
   metadata?: Record<string, unknown>
+  owner?: string
 }
 
 export class AirtableBackend {
@@ -253,6 +254,7 @@ export class AirtableBackend {
     publishTime?: string
     metadata?: Record<string, unknown>
     tags?: string[]
+    owner?: string
   }): Promise<QueueItem> {
     console.log('📤 Starting image queue process...')
     
@@ -283,6 +285,9 @@ export class AirtableBackend {
       }
       if (imageData.metadata) {
         fields['Metadata'] = JSON.stringify(imageData.metadata)
+      }
+      if (imageData.owner) {
+        fields['Owner'] = imageData.owner
       }
 
       const payload = {
@@ -319,7 +324,8 @@ export class AirtableBackend {
         publishTime: record.fields['Publish Time'] as string,
         notes: record.fields['Notes'] as string,
         tags: record.fields['Tags'] as string[],
-        metadata: record.fields['Metadata'] ? JSON.parse(record.fields['Metadata'] as string) : undefined
+        metadata: record.fields['Metadata'] ? JSON.parse(record.fields['Metadata'] as string) : undefined,
+        owner: record.fields['Owner'] as string
       }
 
       console.log('🎉 Queue item created successfully:', queueItem.id)
@@ -355,7 +361,8 @@ export class AirtableBackend {
         publishTime: record.fields['Publish Time'] as string,
         notes: record.fields['Notes'] as string || '',
         tags: record.fields['Tags'] as string[] || [],
-        metadata: record.fields['Metadata'] ? JSON.parse(record.fields['Metadata'] as string) : undefined
+        metadata: record.fields['Metadata'] ? JSON.parse(record.fields['Metadata'] as string) : undefined,
+        owner: record.fields['Owner'] as string || ''
       }))
     } catch (error) {
       console.error('Error getting queue status:', error)
@@ -640,7 +647,8 @@ export class AirtableBackend {
         publishTime: record.fields['Publish Time'] as string,
         notes: record.fields['Notes'] as string || '',
         tags: record.fields['Tags'] as string[] || [],
-        metadata: record.fields['Metadata'] ? JSON.parse(record.fields['Metadata'] as string) : undefined
+        metadata: record.fields['Metadata'] ? JSON.parse(record.fields['Metadata'] as string) : undefined,
+        owner: record.fields['Owner'] as string || ''
       }))
     } catch (error) {
       console.error('Error getting queue items by tag:', error)

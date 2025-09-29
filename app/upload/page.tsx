@@ -24,6 +24,7 @@ interface QueueItem {
   notes?: string
   metadata?: Record<string, unknown>
   publishDate?: string
+  owner?: string
 }
 
 interface AirtableQueueItem {
@@ -55,6 +56,8 @@ export default function Home() {
   // Enhanced fields state
   const [defaultNotes, setDefaultNotes] = useState<string>('')
   const [defaultPublishDate, setDefaultPublishDate] = useState<string>(new Date().toISOString().split('T')[0])
+  const [defaultOwner, setDefaultOwner] = useState<string>('')
+  const [defaultFileName, setDefaultFileName] = useState<string>('')
 
 
   useEffect(() => {
@@ -270,6 +273,7 @@ export default function Home() {
         // Enhanced fields with defaults
         notes: defaultNotes,
         publishDate: defaultPublishDate,
+        owner: defaultOwner,
         metadata: {
           originalName: file.name,
           mimeType: file.type,
@@ -442,6 +446,11 @@ export default function Home() {
         setStatus(`Adding item ${i + 1}/${completedUploads.length} to Airtable queue...`)
 
         try {
+          // Process filename with prefix if provided
+          const processedFileName = defaultFileName
+            ? `${defaultFileName}_${item.file.name}`
+            : item.file.name
+
           const response = await fetch('/api/airtable/queue/add', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -449,10 +458,11 @@ export default function Home() {
               email: storedEmail,
               imageData: {
                 url: cloudinaryUrl,
-                name: item.file.name,
+                name: processedFileName,
                 size: item.file.size,
                 notes: item.notes,
                 publishDate: item.publishDate,
+                owner: item.owner,
                 metadata: {
                   ...item.metadata,
                   processedAt: new Date().toISOString()
@@ -662,6 +672,36 @@ export default function Home() {
                       value={defaultNotes}
                       onChange={(e) => setDefaultNotes(e.target.value)}
                       placeholder="Optional notes..."
+                      className="w-full px-3 py-2 border rounded-lg text-sm"
+                      style={{ borderColor: theme.colors.border, backgroundColor: theme.colors.background, color: theme.colors.text }}
+                    />
+                  </div>
+
+                  {/* Default Owner */}
+                  <div>
+                    <label className="block text-sm font-medium mb-2" style={{ color: theme.colors.textSecondary }}>
+                      Default Owner
+                    </label>
+                    <input
+                      type="text"
+                      value={defaultOwner}
+                      onChange={(e) => setDefaultOwner(e.target.value)}
+                      placeholder="Image owner/client..."
+                      className="w-full px-3 py-2 border rounded-lg text-sm"
+                      style={{ borderColor: theme.colors.border, backgroundColor: theme.colors.background, color: theme.colors.text }}
+                    />
+                  </div>
+
+                  {/* Default File Name */}
+                  <div>
+                    <label className="block text-sm font-medium mb-2" style={{ color: theme.colors.textSecondary }}>
+                      File Name Prefix
+                    </label>
+                    <input
+                      type="text"
+                      value={defaultFileName}
+                      onChange={(e) => setDefaultFileName(e.target.value)}
+                      placeholder="Optional filename prefix..."
                       className="w-full px-3 py-2 border rounded-lg text-sm"
                       style={{ borderColor: theme.colors.border, backgroundColor: theme.colors.background, color: theme.colors.text }}
                     />
