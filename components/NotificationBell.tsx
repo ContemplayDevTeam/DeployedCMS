@@ -33,9 +33,16 @@ export function NotificationBell() {
         const data = await response.json()
         setNotifications(data.notifications || [])
         setUnreadCount(data.notifications?.filter((n: Notification) => !n.read).length || 0)
+      } else {
+        // Silently fail - notifications table may not exist yet
+        setNotifications([])
+        setUnreadCount(0)
       }
     } catch (error) {
-      console.error('Error fetching notifications:', error)
+      // Silently fail - notifications feature may not be set up
+      console.warn('Notifications not available:', error)
+      setNotifications([])
+      setUnreadCount(0)
     } finally {
       setIsLoading(false)
     }
