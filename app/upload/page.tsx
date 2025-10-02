@@ -74,6 +74,14 @@ export default function Home() {
 
     // Ensure page starts at top on load
     window.scrollTo(0, 0)
+
+    // Listen for share modal event from Header
+    const handleOpenShareModal = () => setShowShareModal(true)
+    window.addEventListener('openShareModal', handleOpenShareModal)
+
+    return () => {
+      window.removeEventListener('openShareModal', handleOpenShareModal)
+    }
   }, [])
 
   const fetchAirtableQueueItems = useCallback(async () => {
@@ -608,25 +616,6 @@ export default function Home() {
         </div>
       )}
 
-      {/* Share Button for logged in users */}
-      {storedEmail && (
-        <div className="border-b py-3 z-40 transition-all duration-300 ease-in-out" style={{ backgroundColor: theme.colors.secondary, borderColor: theme.colors.border }}>
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-end items-center">
-              <button
-                onClick={() => setShowShareModal(true)}
-                className="px-4 py-2 text-sm rounded-lg transition-colors flex items-center space-x-2"
-                style={{ backgroundColor: theme.colors.accent, color: theme.colors.background }}
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-                </svg>
-                <span>Share Workspace</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Main Content */}
       <main 
