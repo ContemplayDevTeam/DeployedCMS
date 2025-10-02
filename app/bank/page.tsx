@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTheme } from '@/components/ThemeProvider'
 
@@ -22,11 +22,7 @@ export default function ImageBank() {
   const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set())
   const [publishDate, setPublishDate] = useState('')
 
-  useEffect(() => {
-    fetchBankedImages()
-  }, [])
-
-  const fetchBankedImages = async () => {
+  const fetchBankedImages = useCallback(async () => {
     const email = localStorage.getItem('uploader_email')
     if (!email) {
       router.push('/login')
@@ -50,7 +46,11 @@ export default function ImageBank() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [router])
+
+  useEffect(() => {
+    fetchBankedImages()
+  }, [fetchBankedImages])
 
   const toggleImageSelection = (imageId: string) => {
     const newSelected = new Set(selectedImages)

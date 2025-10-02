@@ -65,6 +65,7 @@ export default function Home() {
 
   // Image Bank state
   const [saveToBank, setSaveToBank] = useState(false)
+  const [bankErrorMessage, setBankErrorMessage] = useState('')
 
 
   useEffect(() => {
@@ -752,15 +753,28 @@ export default function Home() {
                       type="checkbox"
                       id="saveToBank"
                       checked={saveToBank}
-                      onChange={(e) => setSaveToBank(e.target.checked)}
-                      className="w-4 h-4 rounded border cursor-pointer"
+                      disabled={queue.length === 0}
+                      onChange={(e) => {
+                        if (queue.length === 0) {
+                          setBankErrorMessage('You cannot save to Image Bank without any images in the dropzone')
+                          setTimeout(() => setBankErrorMessage(''), 3000)
+                        } else {
+                          setSaveToBank(e.target.checked)
+                        }
+                      }}
+                      className="w-4 h-4 rounded border cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                       style={{ borderColor: theme.colors.border, accentColor: theme.colors.accent }}
                     />
-                    <label htmlFor="saveToBank" className="text-sm cursor-pointer" style={{ color: theme.colors.text }}>
+                    <label htmlFor="saveToBank" className={`text-sm ${queue.length === 0 ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`} style={{ color: theme.colors.text }}>
                       Save to Image Bank (don&apos;t add to publishing queue)
                     </label>
                   </div>
-                  {saveToBank && (
+                  {bankErrorMessage && (
+                    <div className="text-xs ml-6 px-3 py-2 rounded-lg animate-pulse" style={{ backgroundColor: `${theme.colors.error}20`, color: theme.colors.error }}>
+                      {bankErrorMessage}
+                    </div>
+                  )}
+                  {saveToBank && !bankErrorMessage && (
                     <Link
                       href="/bank"
                       className="text-xs ml-6 underline hover:opacity-80 transition-opacity"
