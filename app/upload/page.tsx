@@ -746,18 +746,29 @@ export default function Home() {
                 </div>
 
                 {/* Save to Image Bank Checkbox */}
-                <div className="flex items-center space-x-2 mt-4">
-                  <input
-                    type="checkbox"
-                    id="saveToBank"
-                    checked={saveToBank}
-                    onChange={(e) => setSaveToBank(e.target.checked)}
-                    className="w-4 h-4 rounded border cursor-pointer"
-                    style={{ borderColor: theme.colors.border, accentColor: theme.colors.accent }}
-                  />
-                  <label htmlFor="saveToBank" className="text-sm cursor-pointer" style={{ color: theme.colors.text }}>
-                    Save to Image Bank (don&apos;t add to publishing queue)
-                  </label>
+                <div className="flex flex-col space-y-2 mt-4">
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="saveToBank"
+                      checked={saveToBank}
+                      onChange={(e) => setSaveToBank(e.target.checked)}
+                      className="w-4 h-4 rounded border cursor-pointer"
+                      style={{ borderColor: theme.colors.border, accentColor: theme.colors.accent }}
+                    />
+                    <label htmlFor="saveToBank" className="text-sm cursor-pointer" style={{ color: theme.colors.text }}>
+                      Save to Image Bank (don&apos;t add to publishing queue)
+                    </label>
+                  </div>
+                  {saveToBank && (
+                    <Link
+                      href="/bank"
+                      className="text-xs ml-6 underline hover:opacity-80 transition-opacity"
+                      style={{ color: theme.colors.accent }}
+                    >
+                      → View Image Bank
+                    </Link>
+                  )}
                 </div>
               </div>
 

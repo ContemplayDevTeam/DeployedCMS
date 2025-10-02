@@ -53,6 +53,13 @@ export function Header() {
                   Dashboard
                 </Link>
                 <Link
+                  href="/bank"
+                  className="inline-flex items-center px-2 xl:px-3 py-1 text-sm font-medium transition-colors hover:opacity-80 whitespace-nowrap"
+                  style={{ color: theme.colors.text }}
+                >
+                  Image Bank
+                </Link>
+                <Link
                   href="/landing"
                   className="inline-flex items-center px-2 xl:px-3 py-1 text-sm font-medium transition-colors hover:opacity-80 whitespace-nowrap"
                   style={{ color: theme.colors.text }}
@@ -98,7 +105,8 @@ export function Header() {
               {/* Mobile menu button */}
               <div className="flex-1 flex justify-end lg:hidden">
                 <Disclosure.Button className="inline-flex items-center justify-center rounded-md p-2 transition-colors hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-inset"
-                  style={{ color: theme.colors.text, '--tw-ring-color': theme.colors.text } as React.CSSProperties}>
+                  style={{ color: theme.colors.text, '--tw-ring-color': theme.colors.text } as React.CSSProperties}
+                  suppressHydrationWarning>
                   <span className="sr-only">Open main menu</span>
                   {open ? (
                     <XMarkIcon className="block h-6 w-6" aria-hidden="true" />
@@ -128,6 +136,14 @@ export function Header() {
                 style={{ color: '#42504d' }}
               >
                 Dashboard
+              </Disclosure.Button>
+              <Disclosure.Button
+                as={Link}
+                href="/bank"
+                className="block py-2 pl-3 pr-4 text-base font-medium transition-colors hover:opacity-80"
+                style={{ color: '#42504d' }}
+              >
+                Image Bank
               </Disclosure.Button>
               <Disclosure.Button
                 as={Link}
