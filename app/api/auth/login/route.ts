@@ -60,13 +60,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check if user is verified
-    if (!user.isVerified) {
-      return NextResponse.json(
-        { error: 'Account not verified. Please contact support.' },
-        { status: 403 }
-      )
-    }
+    // Removed verification check - if user exists, they can log in
 
     return NextResponse.json({
       success: true,

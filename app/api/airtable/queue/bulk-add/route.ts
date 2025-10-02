@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
 
     const airtable = new AirtableBackend(apiKey, baseId)
 
-    // Verify user exists and is verified
+    // Verify user exists (removed verification check - if they logged in, they can upload)
     console.log('👤 Looking up user:', email)
     const user = await airtable.getUser(email)
     if (!user) {
@@ -64,15 +64,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    console.log('✅ User found:', { id: user.id, isVerified: user.isVerified })
-
-    if (!user.isVerified) {
-      console.error('❌ User not verified:', email)
-      return NextResponse.json(
-        { error: 'User not verified' },
-        { status: 403 }
-      )
-    }
+    console.log('✅ User found:', { id: user.id })
 
     // Process each queue item
     console.log('📤 Processing queue items:', queueItems.length)
