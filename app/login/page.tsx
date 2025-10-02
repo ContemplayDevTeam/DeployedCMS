@@ -9,19 +9,22 @@ import { DynamicLogo } from '../../components/DynamicLogo'
 
 export default function Login() {
   const router = useRouter()
-  const { theme, setEmailTheme } = useTheme()
+  const { theme, setEmailTheme, setPasswordTheme } = useTheme()
   const [formData, setFormData] = useState({
-    email: ''
+    email: '',
+    themePassword: ''
   })
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
 
-  // Update theme when email changes
+  // Update theme when password changes
   useEffect(() => {
-    if (formData.email && formData.email.includes('@')) {
+    if (formData.themePassword) {
+      setPasswordTheme(formData.themePassword)
+    } else if (formData.email && formData.email.includes('@')) {
       setEmailTheme(formData.email)
     }
-  }, [formData.email, setEmailTheme])
+  }, [formData.email, formData.themePassword, setEmailTheme, setPasswordTheme])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -47,6 +50,9 @@ export default function Login() {
 
       // Store user data
       localStorage.setItem('uploader_email', formData.email)
+      if (formData.themePassword) {
+        localStorage.setItem('theme_password', formData.themePassword)
+      }
       localStorage.setItem('uploader_userId', data.userId)
       localStorage.setItem('uploader_action', 'login')
       localStorage.setItem('uploader_timestamp', new Date().toISOString())
@@ -233,6 +239,42 @@ export default function Login() {
                   <div className="absolute left-4 top-1/2 transform -translate-y-1/2">
                     <svg className="w-5 h-5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: theme.colors.text }}>
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+
+              {/* Theme Password Input */}
+              <div>
+                <label htmlFor="themePassword" className="block text-sm font-semibold mb-3" style={{ color: theme.colors.background }}>
+                  Workspace Code (Optional)
+                </label>
+                <div className="relative">
+                  <input
+                    id="themePassword"
+                    name="themePassword"
+                    type="text"
+                    placeholder="Enter workspace code for custom theme"
+                    className="w-full px-4 py-4 pl-12 rounded-xl border-2 transition-all duration-300 focus:outline-none focus:ring-4"
+                    style={{
+                      borderColor: `${theme.colors.background}30`,
+                      backgroundColor: `${theme.colors.background}90`,
+                      color: theme.colors.text
+                    }}
+                    value={formData.themePassword}
+                    onChange={handleChange}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = theme.colors.accent
+                      e.target.style.boxShadow = `0 0 0 4px ${theme.colors.accent}40`
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = `${theme.colors.background}30`
+                      e.target.style.boxShadow = 'none'
+                    }}
+                  />
+                  <div className="absolute left-4 top-1/2 transform -translate-y-1/2">
+                    <svg className="w-5 h-5" style={{ color: theme.colors.text + '80' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                     </svg>
                   </div>
                 </div>

@@ -58,6 +58,11 @@ export default function Home() {
   const [defaultOwner, setDefaultOwner] = useState<string>('')
   const [defaultFileName, setDefaultFileName] = useState<string>('')
 
+  // Share modal state
+  const [showShareModal, setShowShareModal] = useState(false)
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [inviteMessage, setInviteMessage] = useState('')
+
 
   useEffect(() => {
     const saved = localStorage.getItem('uploader_email')
@@ -576,7 +581,7 @@ export default function Home() {
   return (
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: theme.colors.primary }}>
 
-      {/* Email Input for non-logged in users */}
+      {/* Email Input for non-logged in users + Share Button */}
       {!storedEmail && (
         <div className="border-b py-4 z-40 transition-all duration-300 ease-in-out" style={{ backgroundColor: theme.colors.secondary, borderColor: theme.colors.border }}>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -597,6 +602,26 @@ export default function Home() {
                 suppressHydrationWarning={true}
               >
                 Continue
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Share Button for logged in users */}
+      {storedEmail && (
+        <div className="border-b py-3 z-40 transition-all duration-300 ease-in-out" style={{ backgroundColor: theme.colors.secondary, borderColor: theme.colors.border }}>
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-end items-center">
+              <button
+                onClick={() => setShowShareModal(true)}
+                className="px-4 py-2 text-sm rounded-lg transition-colors flex items-center space-x-2"
+                style={{ backgroundColor: theme.colors.accent, color: theme.colors.background }}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                </svg>
+                <span>Share Workspace</span>
               </button>
             </div>
           </div>
@@ -1047,6 +1072,118 @@ export default function Home() {
           </div>
         </div>
       </footer>
+
+      {/* Share Workspace Modal */}
+      {showShareModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="max-w-md w-full rounded-2xl p-6 shadow-2xl" style={{ backgroundColor: theme.colors.background }}>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold" style={{ color: theme.colors.text }}>Share Workspace</h3>
+              <button
+                onClick={() => setShowShareModal(false)}
+                className="p-2 rounded-lg transition-colors"
+                style={{ color: theme.colors.text }}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <p className="text-sm mb-4" style={{ color: theme.colors.textSecondary }}>
+              Invite team members to collaborate in your workspace. They&apos;ll need the workspace code from your login page.
+            </p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: theme.colors.text }}>
+                  Email Address
+                </label>
+                <input
+                  type="email"
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                  placeholder="colleague@example.com"
+                  className="w-full px-4 py-3 rounded-lg border-2 focus:outline-none focus:ring-2"
+                  style={{ borderColor: theme.colors.border, backgroundColor: theme.colors.surface, color: theme.colors.text }}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: theme.colors.text }}>
+                  Message (Optional)
+                </label>
+                <textarea
+                  value={inviteMessage}
+                  onChange={(e) => setInviteMessage(e.target.value)}
+                  placeholder="Join our workspace to collaborate..."
+                  rows={3}
+                  className="w-full px-4 py-3 rounded-lg border-2 focus:outline-none focus:ring-2 resize-none"
+                  style={{ borderColor: theme.colors.border, backgroundColor: theme.colors.surface, color: theme.colors.text }}
+                />
+              </div>
+
+              <div className="bg-opacity-20 p-4 rounded-lg" style={{ backgroundColor: theme.colors.accent }}>
+                <p className="text-sm font-medium mb-1" style={{ color: theme.colors.text }}>Workspace Code:</p>
+                <p className="text-lg font-mono font-bold" style={{ color: theme.colors.accent }}>
+                  {localStorage.getItem('theme_password') || 'No code set'}
+                </p>
+                <p className="text-xs mt-2" style={{ color: theme.colors.textSecondary }}>
+                  Share this code with your team members so they can access this workspace theme.
+                </p>
+              </div>
+
+              <div className="flex space-x-3">
+                <button
+                  onClick={async () => {
+                    if (!inviteEmail) return
+
+                    try {
+                      const response = await fetch('/api/invite', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          email: inviteEmail,
+                          message: inviteMessage,
+                          workspaceCode: localStorage.getItem('theme_password'),
+                          senderEmail: storedEmail
+                        })
+                      })
+
+                      if (response.ok) {
+                        setInviteMessage('Invitation sent successfully!')
+                        setTimeout(() => {
+                          setShowShareModal(false)
+                          setInviteEmail('')
+                          setInviteMessage('')
+                        }, 2000)
+                      }
+                    } catch (error) {
+                      console.error('Invite error:', error)
+                    }
+                  }}
+                  disabled={!inviteEmail}
+                  className="flex-1 px-4 py-3 rounded-lg font-medium transition-colors disabled:opacity-50"
+                  style={{ backgroundColor: theme.colors.accent, color: theme.colors.background }}
+                >
+                  Send Invite
+                </button>
+                <button
+                  onClick={() => {
+                    setShowShareModal(false)
+                    setInviteEmail('')
+                    setInviteMessage('')
+                  }}
+                  className="px-4 py-3 rounded-lg font-medium transition-colors"
+                  style={{ backgroundColor: theme.colors.surface, color: theme.colors.text }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

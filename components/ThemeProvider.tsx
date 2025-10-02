@@ -1,11 +1,12 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
-import { Theme, themes, getThemeForTesting, applyTheme } from '../lib/themes'
+import { Theme, themes, getThemeForTesting, getThemeFromPassword, applyTheme } from '../lib/themes'
 
 interface ThemeContextType {
   theme: Theme
   setEmailTheme: (email: string) => void
+  setPasswordTheme: (password: string) => void
   currentThemeName: string
 }
 
@@ -26,6 +27,21 @@ interface ThemeProviderProps {
 export function ThemeProvider({ children }: ThemeProviderProps) {
   const [theme, setTheme] = useState<Theme>(themes.default)
   const [currentThemeName, setCurrentThemeName] = useState('default')
+
+  const setPasswordTheme = (password: string) => {
+    const newTheme = getThemeFromPassword(password)
+    setTheme(newTheme)
+    setCurrentThemeName(newTheme.name.toLowerCase())
+
+    // Apply theme to DOM
+    applyTheme(newTheme)
+
+    // Store in localStorage for persistence
+    localStorage.setItem('theme_password', password)
+    localStorage.setItem('theme_name', newTheme.name.toLowerCase())
+
+    console.log(`🎨 Theme switched to: ${newTheme.name} via workspace code`)
+  }
 
   const setEmailTheme = (email: string) => {
     // Check for URL parameter override for testing
@@ -49,6 +65,7 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
 
   // Load theme from localStorage on mount
   useEffect(() => {
+    const savedPassword = localStorage.getItem('theme_password')
     const savedEmail = localStorage.getItem('user_email')
     const savedTheme = localStorage.getItem('theme_name')
 
@@ -56,7 +73,10 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
     const urlParams = new URLSearchParams(window.location.search)
     const testTheme = urlParams.get('theme')
 
-    if (savedEmail) {
+    // Priority: password > email > test URL > saved theme
+    if (savedPassword) {
+      setPasswordTheme(savedPassword)
+    } else if (savedEmail) {
       setEmailTheme(savedEmail)
     } else if (testTheme && themes[testTheme]) {
       const loadedTheme = themes[testTheme]
@@ -73,7 +93,7 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
   }, [])
 
   return (
-    <ThemeContext.Provider value={{ theme, setEmailTheme, currentThemeName }}>
+    <ThemeContext.Provider value={{ theme, setEmailTheme, setPasswordTheme, currentThemeName }}>
       {children}
     </ThemeContext.Provider>
   )

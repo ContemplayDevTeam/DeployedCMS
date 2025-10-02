@@ -95,6 +95,20 @@ export const themes: Record<string, Theme> = {
   }
 }
 
+export function getThemeFromPassword(password: string): Theme {
+  if (!password) return themes.default
+
+  // Map passwords to themes
+  const themePasswords: Record<string, Theme> = {
+    'hnp2024': themes.homegrownnationalpark,
+    'homegrown': themes.homegrownnationalpark,
+    // Add more password mappings here
+  }
+
+  const theme = themePasswords[password.toLowerCase()]
+  return theme || themes.default
+}
+
 export function getThemeFromEmail(email: string): Theme {
   if (!email) return themes.default
 
