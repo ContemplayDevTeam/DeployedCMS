@@ -32,7 +32,7 @@ interface AirtableQueueItem {
   imageUrl: string
   fileName: string
   fileSize: number
-  status: 'queued' | 'processing' | 'published' | 'failed'
+  status?: 'queued' | 'banked' | 'processing' | 'published' | 'failed'
   uploadDate: string
   publishDate?: string
   notes?: string
@@ -62,6 +62,9 @@ export default function Home() {
   const [showShareModal, setShowShareModal] = useState(false)
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteMessage, setInviteMessage] = useState('')
+
+  // Image Bank state
+  const [saveToBank, setSaveToBank] = useState(false)
 
 
   useEffect(() => {
@@ -444,8 +447,9 @@ export default function Home() {
         return
       }
 
-      setStatus(`Sending ${completedUploads.length} items to Airtable queue...`)
-      console.log('📤 Preparing to send items to Airtable...')
+      const destination = saveToBank ? 'Image Bank' : 'Queue'
+      setStatus(`Sending ${completedUploads.length} items to Airtable ${destination}...`)
+      console.log(`📤 Preparing to send items to Airtable ${destination}...`)
 
       // Send each item individually with enhanced fields using the enhanced API
       let successCount = 0
@@ -463,7 +467,10 @@ export default function Home() {
             ? `${defaultFileName}_${item.file.name}`
             : item.file.name
 
-          const response = await fetch('/api/airtable/queue/add', {
+          // Use bank endpoint if saveToBank is true, otherwise use queue endpoint
+          const endpoint = saveToBank ? '/api/airtable/bank/add' : '/api/airtable/queue/add'
+
+          const response = await fetch(endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -531,12 +538,13 @@ export default function Home() {
         
         setStatus(`Processed ${bulkResult.summary.successful} items, ${bulkResult.summary.failed} failed. Errors: ${errorDetails}`)
       } else {
-        setStatus(`Successfully processed ${bulkResult.summary.successful} items`)
+        const destination = saveToBank ? 'Image Bank' : 'Publishing Queue'
+        setStatus(`Successfully added ${bulkResult.summary.successful} items to ${destination}`)
       }
 
       // Clear the local queue after successful processing
       setQueue([])
-      
+
       // Refresh the Airtable queue to show the newly added items
       await fetchAirtableQueueItems()
       
@@ -719,6 +727,21 @@ export default function Home() {
                       style={{ borderColor: theme.colors.border, backgroundColor: theme.colors.background, color: theme.colors.text }}
                     />
                   </div>
+                </div>
+
+                {/* Save to Image Bank Checkbox */}
+                <div className="flex items-center space-x-2 mt-4">
+                  <input
+                    type="checkbox"
+                    id="saveToBank"
+                    checked={saveToBank}
+                    onChange={(e) => setSaveToBank(e.target.checked)}
+                    className="w-4 h-4 rounded border cursor-pointer"
+                    style={{ borderColor: theme.colors.border, accentColor: theme.colors.accent }}
+                  />
+                  <label htmlFor="saveToBank" className="text-sm cursor-pointer" style={{ color: theme.colors.text }}>
+                    Save to Image Bank (don&apos;t add to publishing queue)
+                  </label>
                 </div>
               </div>
 

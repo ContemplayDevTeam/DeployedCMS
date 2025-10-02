@@ -19,6 +19,7 @@ interface QueueItem {
   imageUrl: string
   fileName: string
   fileSize: number
+  status?: 'queued' | 'banked' | 'processing' | 'published' | 'failed'
   uploadDate: string
   publishDate?: string
   publishTime?: string
@@ -343,6 +344,132 @@ export class AirtableBackend {
       }
       
       throw new Error(`Failed to queue ${imageData.name}: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
+  }
+
+  // Bank an image (upload without queuing)
+  async bankImage(userEmail: string, imageData: {
+    url: string
+    name: string
+    size: number
+    notes?: string
+    metadata?: Record<string, unknown>
+    tags?: string[]
+    owner?: string
+  }): Promise<QueueItem> {
+    console.log('🏦 Banking image for user:', userEmail)
+
+    try {
+      const fields: Record<string, unknown> = {
+        'User Email': userEmail,
+        'Image URL': imageData.url,
+        'File Name': imageData.name,
+        'File Size': imageData.size,
+        'Upload Date': new Date().toISOString().split('T')[0],
+        'Status': 'banked'
+      }
+
+      // Add optional fields if provided
+      if (imageData.notes) {
+        fields['Notes'] = imageData.notes
+      }
+      if (imageData.tags && imageData.tags.length > 0) {
+        fields['Tags'] = imageData.tags
+      }
+      if (imageData.metadata) {
+        fields['Metadata'] = JSON.stringify(imageData.metadata)
+      }
+      if (imageData.owner) {
+        fields['Owner'] = imageData.owner
+      }
+
+      const payload = {
+        records: [{
+          fields
+        }]
+      }
+
+      console.log('📦 Banking payload:', JSON.stringify(payload.records[0].fields, null, 2))
+
+      const response = await this.makeRequest(`/${this.tableIds.queue}`, {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      })
+
+      const record = response.records[0]
+      const bankedItem = {
+        id: record.id,
+        userEmail: record.fields['User Email'] as string,
+        imageUrl: record.fields['Image URL'] as string,
+        fileName: record.fields['File Name'] as string,
+        fileSize: record.fields['File Size'] as number,
+        status: 'banked' as const,
+        uploadDate: record.fields['Upload Date'] as string,
+        notes: record.fields['Notes'] as string,
+        tags: record.fields['Tags'] as string[],
+        metadata: record.fields['Metadata'] ? JSON.parse(record.fields['Metadata'] as string) : undefined,
+        owner: record.fields['Owner'] as string
+      }
+
+      console.log('✅ Image banked successfully:', bankedItem.id)
+      return bankedItem
+    } catch (error) {
+      console.error('❌ Error banking image:', error)
+      throw new Error(`Failed to bank image ${imageData.name}: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
+  }
+
+  // Move banked image to queue
+  async moveBankedToQueue(recordId: string, publishDate?: string): Promise<boolean> {
+    console.log('📤 Moving banked image to queue:', recordId)
+
+    try {
+      const fields: Record<string, unknown> = {
+        'Status': 'queued',
+        'Publish Date': publishDate || new Date().toISOString().split('T')[0]
+      }
+
+      const payload = {
+        records: [{
+          id: recordId,
+          fields
+        }]
+      }
+
+      await this.makeRequest(`/${this.tableIds.queue}`, {
+        method: 'PATCH',
+        body: JSON.stringify(payload)
+      })
+
+      console.log('✅ Successfully moved banked image to queue:', recordId)
+      return true
+    } catch (error) {
+      console.error('❌ Error moving banked image to queue:', error)
+      return false
+    }
+  }
+
+  // Get banked images (not in queue)
+  async getBankedImages(userEmail: string): Promise<QueueItem[]> {
+    try {
+      const response = await this.makeRequest(`/${this.tableIds.queue}?filterByFormula=${encodeURIComponent(`AND({User Email} = '${userEmail}', {Status} = 'banked')`)}&sort[0][field]=Upload Date&sort[0][direction]=desc`)
+
+      return response.records.map((record: { id: string; fields: Record<string, unknown> }) => ({
+        id: record.id,
+        userEmail: record.fields['User Email'] as string,
+        imageUrl: record.fields['Image URL'] as string,
+        fileName: record.fields['File Name'] as string || 'Unknown',
+        fileSize: record.fields['File Size'] as number || 0,
+        status: 'banked' as const,
+        uploadDate: record.fields['Upload Date'] as string,
+        notes: record.fields['Notes'] as string || '',
+        tags: record.fields['Tags'] as string[] || [],
+        metadata: record.fields['Metadata'] ? JSON.parse(record.fields['Metadata'] as string) : undefined,
+        owner: record.fields['Owner'] as string || ''
+      }))
+    } catch (error) {
+      console.error('Error getting banked images:', error)
+      throw new Error('Failed to get banked images')
     }
   }
 
