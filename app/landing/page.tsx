@@ -89,6 +89,7 @@ export default function Landing() {
                     style={{ borderColor: '#e2775c', backgroundColor: '#F9FAFB', color: '#42504d' }}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    suppressHydrationWarning
                   />
                                    <div className="flex gap-4">
                                          <button
@@ -96,6 +97,7 @@ export default function Landing() {
                        disabled={isLoading || !email.trim()}
                        className="flex-1 px-6 py-3 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all btn-hover"
                        style={{ backgroundColor: '#f05d43', color: '#FFFFFF' }}
+                       suppressHydrationWarning
                      >
                        {isLoading ? (
                          <div className="w-5 h-5 border-2 border-transparent rounded-full spinner mx-auto" style={{ borderColor: '#FFFFFF', borderTopColor: 'transparent' }}></div>
@@ -108,6 +110,7 @@ export default function Landing() {
                        disabled={isLoading || !email.trim()}
                        className="flex-1 px-6 py-3 border-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all btn-hover"
                        style={{ borderColor: '#e2775c', color: '#e2775c', backgroundColor: '#FFFFFF' }}
+                       suppressHydrationWarning
                      >
                        Sign Up
                      </button>
@@ -161,13 +164,15 @@ export default function Landing() {
                onClick={() => router.push('/signup')}
                className="px-8 py-4 font-semibold rounded-lg transition-colors btn-hover"
                style={{ backgroundColor: '#D0DADA', color: '#4A5555' }}
+               suppressHydrationWarning
              >
                Start Uploading Now
              </button>
-             <button 
+             <button
                onClick={() => router.push('/signup')}
-               className="px-8 py-4 border-2 font-semibold rounded-lg transition-colors btn-hover" 
+               className="px-8 py-4 border-2 font-semibold rounded-lg transition-colors btn-hover"
                style={{ borderColor: '#D0DADA', color: '#D0DADA' }}
+               suppressHydrationWarning
              >
                Sign Up
              </button>
