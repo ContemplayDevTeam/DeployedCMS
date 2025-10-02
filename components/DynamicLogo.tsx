@@ -17,6 +17,13 @@ export function DynamicLogo({ size = 'md', className = '' }: DynamicLogoProps) {
     xl: 'w-24 h-24 text-3xl'
   }
 
+  const imageSizeClasses = {
+    sm: 'h-8',
+    md: 'h-12',
+    lg: 'h-16',
+    xl: 'h-24'
+  }
+
   const shapeClasses = {
     circle: 'rounded-full',
     square: 'rounded-none',
@@ -33,22 +40,36 @@ export function DynamicLogo({ size = 'md', className = '' }: DynamicLogoProps) {
       : undefined
   }
 
+  // Check if icon is an image path (starts with /) or emoji/text
+  const isImageIcon = theme.logo.icon.startsWith('/')
+
   return (
-    <div
-      className={`
-        ${sizeClasses[size]}
-        ${shapeClasses[theme.logo.shape]}
-        flex items-center justify-center
-        font-bold
-        transition-all duration-300
-        shadow-md hover:shadow-lg
-        transform hover:scale-105
-        ${className}
-      `}
-      style={logoStyle}
-    >
-      {theme.logo.icon}
-    </div>
+    <>
+      {isImageIcon ? (
+        <img
+          src={theme.logo.icon}
+          alt={`${theme.name} logo`}
+          className={`${imageSizeClasses[size]} w-auto ${className}`}
+        />
+      ) : (
+        <div
+          className={`
+            ${sizeClasses[size]}
+            ${shapeClasses[theme.logo.shape]}
+            flex items-center justify-center
+            font-bold
+            transition-all duration-300
+            shadow-md hover:shadow-lg
+            transform hover:scale-105
+            overflow-hidden
+            ${className}
+          `}
+          style={logoStyle}
+        >
+          {theme.logo.icon}
+        </div>
+      )}
+    </>
   )
 }
 

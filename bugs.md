@@ -1,6 +1,126 @@
 Runtime Error - RESOLVED ✅
 Console Error - RESOLVED ✅
-new bug: Intermittent Network Connectivity Issues
+new bug: Intermittent Network Connectivity Issues Console Error
+
+A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+See more info here: https://nextjs.org/docs/messages/react-hydration-error
+
+
+  ...
+    <ThemeProvider>
+      <Header>
+        <Se as="nav" className="sticky top..." style={{...}}>
+          <C value={function o.useCallback}>
+            <c value={2}>
+              <nav className="sticky top..." style={{...}} ref={function o.useCallback} data-headlessui-state="">
+                <div className="mx-auto ma...">
+                  <div className="flex h-14 ...">
+                    <div>
+                    <div>
+                    <div className="-mr-2 flex...">
+                      <Ae className="inline-fle..." style={{color:"#42...", ...}}>
+                        <button
+                          className="inline-flex items-center justify-center rounded-md p-2 transition-colors hover:op..."
+                          style={{color:"#42504d",--tw-ring-color:"#42504d"}}
+                          id="headlessui-disclosure-button-_R_ddb_"
+                          type="button"
+                          aria-expanded={false}
+                          aria-controls={undefined}
+                          disabled={undefined}
+                          autoFocus={false}
+                          onKeyDown={function onKeyDown}
+                          onKeyUp={function onKeyUp}
+                          onClick={function onClick}
+                          onFocus={function onFocus}
+                          onBlur={function onBlur}
+                          onPointerEnter={function onPointerEnter}
+                          onPointerLeave={function onPointerLeave}
+                          onPointerDown={function onPointerDown}
+                          onPointerUp={function onPointerUp}
+                          ref={function o.useCallback}
+                          data-headlessui-state=""
+-                         fdprocessedid="2yecok"
+                        >
+                ...
+      ...
+        <LoadingBoundary loading={null}>
+          <HTTPAccessFallbackBoundary notFound={undefined} forbidden={undefined} unauthorized={undefined}>
+            <RedirectBoundary>
+              <RedirectErrorBoundary router={{...}}>
+                <InnerLayoutRouter url="/landing" tree={[...]} cacheNode={{lazyData:null, ...}} segmentPath={[...]}>
+                  <ClientPageRoot Component={function Landing} searchParams={{}} params={{}}>
+                    <Landing params={Promise} searchParams={Promise}>
+                      <div className="min-h-screen" style={{...}}>
+                        <section className="relative o..." style={{...}}>
+                          <div className="relative m...">
+                            <div className="text-center">
+                              <h1>
+                              <p>
+                              <div className="flex flex-...">
+                                <div className="w-full sm:...">
+                                  <input
+                                    type="email"
+                                    placeholder="Enter your email address"
+                                    className="w-full px-6 py-4 text-lg border rounded-xl focus:ring-2 focus:border-tr..."
+                                    style={{borderColor:"#e2775c",backgroundColor:"#F9FAFB",color:"#42504d"}}
+                                    value=""
+                                    onChange={function onChange}
+-                                   fdprocessedid="mo9trf"
+                                  >
+                                  ...
+                        <section>
+                        <section className="py-20" style={{...}}>
+                          <div className="max-w-4xl ...">
+                            <h2>
+                            <p>
+                            <div className="flex flex-...">
+                              <button
+                                onClick={function onClick}
+                                className="px-8 py-4 font-semibold rounded-lg transition-colors btn-hover"
+                                style={{backgroundColor:"#D0DADA",color:"#4A5555"}}
+-                               fdprocessedid="wcr5d"
+                              >
++                               Start Uploading Now
+                              <button
+                                onClick={function onClick}
+                                className="px-8 py-4 border-2 font-semibold rounded-lg transition-colors btn-hover"
+                                style={{borderColor:"#D0DADA",color:"#D0DADA"}}
+-                               fdprocessedid="qygdr"
+                              >
++                               Sign Up
+                        ...
+                  ...
+components\Header.tsx (73:17) @ children
+
+
+  71 |               {/* Mobile menu button */}
+  72 |               <div className="-mr-2 flex items-center md:hidden">
+> 73 |                 <Disclosure.Button className="inline-flex items-center justify-center rounded-md p-2 transition-colors hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-inset"
+     |                 ^
+  74 |                   style={{ color: '#42504d', '--tw-ring-color': '#42504d' } as React.CSSProperties}>
+  75 |                   <span className="sr-only">Open main menu</span>
+  76 |                   {open ? (
+Call Stack
+28
+
+Show 24 ignore-listed frame(s)
+button
+<anonymous>
+children
+components\Header.tsx (73:17)
+Header
+components\Header.tsx (9:5)
+RootLayout
+app\layout.tsx (35:11)
 
 **Error:** Network timeouts and connection resets during Cloudinary uploads
 

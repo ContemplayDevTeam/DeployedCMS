@@ -86,10 +86,10 @@ export const themes: Record<string, Theme> = {
       error: '#c67c5c'         // Earthy red for errors
     },
     logo: {
-      icon: '🌲',              // Tree emoji for national park
-      bgColor: '#5e8770',      // Forest green background
+      icon: '/HNPlogo.png',    // Actual HNP logo image
+      bgColor: 'transparent',  // No background
       textColor: '#ffffff',    // White text
-      shape: 'circle'          // Circular shape
+      shape: 'square'          // No rounded corners
     },
     description: 'Earthy national park theme with natural colors'
   }

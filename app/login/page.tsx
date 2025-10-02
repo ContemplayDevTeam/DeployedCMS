@@ -15,7 +15,6 @@ export default function Login() {
   })
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
-  const [showPassword, setShowPassword] = useState(false)
 
   // Update theme when email changes
   useEffect(() => {
@@ -218,8 +217,7 @@ export default function Login() {
                     style={{
                       borderColor: `${theme.colors.background}30`,
                       backgroundColor: `${theme.colors.background}90`,
-                      color: theme.colors.text,
-                      focusRingColor: `${theme.colors.accent}40`
+                      color: theme.colors.text
                     }}
                     value={formData.email}
                     onChange={handleChange}

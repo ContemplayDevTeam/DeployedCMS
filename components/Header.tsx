@@ -12,57 +12,57 @@ export function Header() {
     <Disclosure as="nav" className="sticky top-0 z-50 border-b shadow-sm" style={{ backgroundColor: theme.colors.primary, borderColor: theme.colors.accent }}>
       {({ open }) => (
         <>
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="flex h-14 justify-between">
-              {/* Logo and main navigation */}
-              <div className="flex">
-                <div className="flex flex-shrink-0 items-center">
-                  <Link href="/" className="flex items-center space-x-2">
-                    <DynamicLogo />
+          <div className={`${theme.name === 'Homegrown National Park' ? 'w-full' : 'mx-auto max-w-7xl'} px-4 sm:px-6 lg:px-8`}>
+            <div className="flex h-14 items-center">
+              {/* Logo - Left aligned */}
+              <div className="flex-shrink-0">
+                <Link href="/" className="flex items-center space-x-2">
+                  <DynamicLogo />
+                  {theme.name !== 'Homegrown National Park' && (
                     <span className="hidden font-bold sm:block" style={{ color: theme.colors.text }}>
                       Experience Queue
                     </span>
-                  </Link>
-                </div>
+                  )}
+                </Link>
+              </div>
 
-                {/* Desktop navigation */}
-                <div className="hidden md:ml-6 md:flex md:space-x-8">
-                  <Link
-                    href="/upload"
-                    className="inline-flex items-center px-1 pt-1 text-sm font-medium transition-colors hover:opacity-80"
-                    style={{ color: theme.colors.text }}
-                  >
-                    Upload
-                  </Link>
-                  <Link
-                    href="/dashboard"
-                    className="inline-flex items-center px-1 pt-1 text-sm font-medium transition-colors hover:opacity-80"
-                    style={{ color: theme.colors.text }}
-                  >
-                    Dashboard
-                  </Link>
-                  <Link
-                    href="/landing"
-                    className="inline-flex items-center px-1 pt-1 text-sm font-medium transition-colors hover:opacity-80"
-                    style={{ color: theme.colors.text }}
-                  >
-                    Features
-                  </Link>
-                </div>
+              {/* Center navigation - Desktop only */}
+              <div className="hidden lg:flex lg:flex-1 lg:justify-center lg:space-x-4 xl:space-x-8">
+                <Link
+                  href="/upload"
+                  className="inline-flex items-center px-2 xl:px-3 py-1 text-sm font-medium transition-colors hover:opacity-80 whitespace-nowrap"
+                  style={{ color: theme.colors.text }}
+                >
+                  Upload
+                </Link>
+                <Link
+                  href="/dashboard"
+                  className="inline-flex items-center px-2 xl:px-3 py-1 text-sm font-medium transition-colors hover:opacity-80 whitespace-nowrap"
+                  style={{ color: theme.colors.text }}
+                >
+                  Dashboard
+                </Link>
+                <Link
+                  href="/landing"
+                  className="inline-flex items-center px-2 xl:px-3 py-1 text-sm font-medium transition-colors hover:opacity-80 whitespace-nowrap"
+                  style={{ color: theme.colors.text }}
+                >
+                  Features
+                </Link>
               </div>
 
               {/* Right side - Auth buttons */}
-              <div className="hidden md:ml-6 md:flex md:items-center md:space-x-4">
+              <div className="hidden lg:flex lg:items-center lg:space-x-2 xl:space-x-4">
                 <Link
                   href="/login"
-                  className="text-sm font-medium transition-colors hover:opacity-80"
+                  className="text-sm font-medium transition-colors hover:opacity-80 whitespace-nowrap"
                   style={{ color: '#42504d' }}
                 >
                   Sign In
                 </Link>
                 <Link
                   href="/signup"
-                  className="inline-flex items-center rounded-lg px-4 py-2 text-sm font-medium transition-all hover:shadow-md hover:opacity-90"
+                  className="inline-flex items-center rounded-lg px-3 xl:px-4 py-2 text-sm font-medium transition-all hover:shadow-md hover:opacity-90 whitespace-nowrap"
                   style={{ color: theme.colors.background, backgroundColor: theme.colors.accent }}
                 >
                   Get Started
@@ -70,7 +70,7 @@ export function Header() {
               </div>
 
               {/* Mobile menu button */}
-              <div className="-mr-2 flex items-center md:hidden">
+              <div className="flex-1 flex justify-end lg:hidden">
                 <Disclosure.Button className="inline-flex items-center justify-center rounded-md p-2 transition-colors hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-inset"
                   style={{ color: theme.colors.text, '--tw-ring-color': theme.colors.text } as React.CSSProperties}>
                   <span className="sr-only">Open main menu</span>

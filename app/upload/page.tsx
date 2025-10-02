@@ -7,7 +7,6 @@ import Link from 'next/link'
 import { motion } from 'framer-motion'
 import Lenis from 'lenis'
 import { useTheme } from '../../components/ThemeProvider'
-import { DynamicLogo } from '../../components/DynamicLogo'
 
 
 interface QueueItem {
@@ -324,7 +323,7 @@ export default function Home() {
         } else if (errorData.error) {
           errorMessage = errorData.error
         }
-      } catch (parseError) {
+      } catch {
         // Fallback to text if JSON parsing fails
         const errorText = await uploadResponse.text()
         console.error('❌ Upload failed with status:', uploadResponse.status)

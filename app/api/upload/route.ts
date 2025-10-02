@@ -411,13 +411,14 @@ export async function POST(request: NextRequest) {
       }
 
       // Provide specific user-friendly messages for common network errors
-      if (error.cause?.code === 'ECONNRESET') {
+      const causeCode = (error.cause as { code?: string })?.code
+      if (causeCode === 'ECONNRESET') {
         userMessage = 'Upload failed due to network connection reset. Please check your connection and try again.'
         errorMessage = 'Network connection was reset during upload'
-      } else if (error.cause?.code === 'ETIMEDOUT' || error.message.includes('timeout')) {
+      } else if (causeCode === 'ETIMEDOUT' || error.message.includes('timeout')) {
         userMessage = 'Upload timed out. Please try uploading a smaller image or check your internet connection.'
         errorMessage = 'Upload request timed out'
-      } else if (error.cause?.code === 'ENOTFOUND') {
+      } else if (causeCode === 'ENOTFOUND') {
         userMessage = 'Could not connect to upload service. Please check your internet connection.'
         errorMessage = 'DNS resolution failed for upload service'
       } else if (error.message.includes('fetch failed')) {
