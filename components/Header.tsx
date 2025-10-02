@@ -5,6 +5,7 @@ import { Disclosure } from '@headlessui/react'
 import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline'
 import { useTheme } from './ThemeProvider'
 import { DynamicLogo } from './DynamicLogo'
+import { NotificationBell } from './NotificationBell'
 import { useState, useEffect } from 'react'
 
 export function Header() {
@@ -75,8 +76,9 @@ export function Header() {
                 )}
               </div>
 
-              {/* Right side - Auth buttons */}
+              {/* Right side - Notifications & Auth buttons */}
               <div className="hidden lg:flex lg:items-center lg:space-x-2 xl:space-x-4">
+                {storedEmail && <NotificationBell />}
                 <Link
                   href="/login"
                   className="text-sm font-medium transition-colors hover:opacity-80 whitespace-nowrap"

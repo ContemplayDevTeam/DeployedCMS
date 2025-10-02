@@ -30,6 +30,18 @@ interface QueueItem {
   owner?: string
 }
 
+interface Notification {
+  id?: string
+  userEmail: string
+  type: 'image_published' | 'image_failed' | 'queue_completed' | 'system'
+  title: string
+  message: string
+  read: boolean
+  createdAt: string
+  relatedImageId?: string
+  relatedImageUrl?: string
+}
+
 export class AirtableBackend {
   private apiKey: string
   private baseId: string
@@ -43,13 +55,15 @@ export class AirtableBackend {
     // Table IDs for this base
     this.tableIds = {
       users: 'Users', // Updated to use the correct table name
-      queue: 'Image Queue' // Updated to use the correct table name
+      queue: 'Image Queue', // Updated to use the correct table name
+      notifications: 'Notifications' // Notifications table
     }
   }
 
   private tableIds: {
     users: string
     queue: string
+    notifications: string
   }
 
   private async makeRequest(endpoint: string, options: RequestInit = {}) {
@@ -470,6 +484,140 @@ export class AirtableBackend {
     } catch (error) {
       console.error('Error getting banked images:', error)
       throw new Error('Failed to get banked images')
+    }
+  }
+
+  // Notification methods
+  async createNotification(userEmail: string, notification: Omit<Notification, 'id' | 'userEmail' | 'createdAt' | 'read'>): Promise<Notification> {
+    console.log('🔔 Creating notification for user:', userEmail)
+
+    try {
+      const fields: Record<string, unknown> = {
+        'User Email': userEmail,
+        'Type': notification.type,
+        'Title': notification.title,
+        'Message': notification.message,
+        'Read': false,
+        'Created At': new Date().toISOString()
+      }
+
+      if (notification.relatedImageId) {
+        fields['Related Image ID'] = notification.relatedImageId
+      }
+      if (notification.relatedImageUrl) {
+        fields['Related Image URL'] = notification.relatedImageUrl
+      }
+
+      const payload = {
+        records: [{
+          fields
+        }]
+      }
+
+      const response = await this.makeRequest(`/${this.tableIds.notifications}`, {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      })
+
+      const record = response.records[0]
+      console.log('✅ Notification created:', record.id)
+
+      return {
+        id: record.id,
+        userEmail: record.fields['User Email'] as string,
+        type: record.fields['Type'] as Notification['type'],
+        title: record.fields['Title'] as string,
+        message: record.fields['Message'] as string,
+        read: record.fields['Read'] as boolean,
+        createdAt: record.fields['Created At'] as string,
+        relatedImageId: record.fields['Related Image ID'] as string,
+        relatedImageUrl: record.fields['Related Image URL'] as string
+      }
+    } catch (error) {
+      console.error('❌ Error creating notification:', error)
+      throw new Error('Failed to create notification')
+    }
+  }
+
+  async getNotifications(userEmail: string, unreadOnly: boolean = false): Promise<Notification[]> {
+    try {
+      let filter = `{User Email} = '${userEmail}'`
+      if (unreadOnly) {
+        filter = `AND(${filter}, {Read} = FALSE())`
+      }
+
+      const response = await this.makeRequest(`/${this.tableIds.notifications}?filterByFormula=${encodeURIComponent(filter)}&sort[0][field]=Created At&sort[0][direction]=desc`)
+
+      return response.records.map((record: { id: string; fields: Record<string, unknown> }) => ({
+        id: record.id,
+        userEmail: record.fields['User Email'] as string,
+        type: record.fields['Type'] as Notification['type'],
+        title: record.fields['Title'] as string,
+        message: record.fields['Message'] as string,
+        read: record.fields['Read'] as boolean || false,
+        createdAt: record.fields['Created At'] as string,
+        relatedImageId: record.fields['Related Image ID'] as string,
+        relatedImageUrl: record.fields['Related Image URL'] as string
+      }))
+    } catch (error) {
+      console.error('Error getting notifications:', error)
+      throw new Error('Failed to get notifications')
+    }
+  }
+
+  async markNotificationAsRead(notificationId: string): Promise<boolean> {
+    try {
+      const payload = {
+        records: [{
+          id: notificationId,
+          fields: {
+            'Read': true
+          }
+        }]
+      }
+
+      await this.makeRequest(`/${this.tableIds.notifications}`, {
+        method: 'PATCH',
+        body: JSON.stringify(payload)
+      })
+
+      console.log('✅ Notification marked as read:', notificationId)
+      return true
+    } catch (error) {
+      console.error('❌ Error marking notification as read:', error)
+      return false
+    }
+  }
+
+  async markAllNotificationsAsRead(userEmail: string): Promise<boolean> {
+    try {
+      // Get all unread notifications
+      const unreadNotifications = await this.getNotifications(userEmail, true)
+
+      if (unreadNotifications.length === 0) {
+        return true
+      }
+
+      // Mark all as read
+      const payload = {
+        records: unreadNotifications.map(notification => ({
+          id: notification.id,
+          fields: {
+            'Read': true
+          }
+        }))
+      }
+
+      await this.makeRequest(`/${this.tableIds.notifications}`, {
+        method: 'PATCH',
+        body: JSON.stringify(payload)
+      })
+
+      console.log(`✅ Marked ${unreadNotifications.length} notifications as read`)
+      return true
+    } catch (error) {
+      console.error('❌ Error marking all notifications as read:', error)
+      return false
     }
   }
 

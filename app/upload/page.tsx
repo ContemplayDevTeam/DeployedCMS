@@ -540,6 +540,22 @@ export default function Home() {
       } else {
         const destination = saveToBank ? 'Image Bank' : 'Publishing Queue'
         setStatus(`Successfully added ${bulkResult.summary.successful} items to ${destination}`)
+
+        // Create notification for successful upload
+        try {
+          await fetch('/api/notifications', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: storedEmail,
+              type: saveToBank ? 'system' : 'queue_completed',
+              title: saveToBank ? 'Images Banked' : 'Images Queued',
+              message: `Successfully added ${bulkResult.summary.successful} image${bulkResult.summary.successful > 1 ? 's' : ''} to ${destination}`
+            })
+          })
+        } catch (error) {
+          console.error('Failed to create notification:', error)
+        }
       }
 
       // Clear the local queue after successful processing
