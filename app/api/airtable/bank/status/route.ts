@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { AirtableBackend } from '@/lib/airtable'
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,22 +11,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const baseId = process.env.AIRTABLE_BASE_ID
-    const apiKey = process.env.AIRTABLE_API_KEY
-
-    if (!apiKey || !baseId) {
-      return NextResponse.json(
-        { error: 'Airtable configuration missing' },
-        { status: 500 }
-      )
-    }
-
-    const airtable = new AirtableBackend(apiKey, baseId)
-    const bankedItems = await airtable.getBankedImages(email)
-
+    // Return success - client will read from localStorage
+    // This endpoint is now just a placeholder
     return NextResponse.json({
       success: true,
-      bankedItems
+      bankedItems: [] // Client-side will populate this from localStorage
     })
   } catch (error) {
     console.error('Error getting bank status:', error)

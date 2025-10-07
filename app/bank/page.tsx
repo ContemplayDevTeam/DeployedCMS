@@ -12,6 +12,9 @@ interface BankedImage {
   uploadedAt: string
   size?: number
   status: string
+  approved?: boolean
+  notes?: string
+  publishDate?: string
 }
 
 export default function ImageBank() {
@@ -22,6 +25,15 @@ export default function ImageBank() {
   const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set())
   const [publishDate, setPublishDate] = useState('')
 
+  // Edit modal state
+  const [editingImageId, setEditingImageId] = useState<string | null>(null)
+  const [editFormData, setEditFormData] = useState({
+    filename: '',
+    owner: '',
+    notes: '',
+    publishDate: ''
+  })
+
   const fetchBankedImages = useCallback(async () => {
     const email = localStorage.getItem('uploader_email')
     if (!email) {
@@ -31,16 +43,25 @@ export default function ImageBank() {
 
     setIsLoading(true)
     try {
-      const response = await fetch('/api/airtable/bank/status', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email })
-      })
+      // Read from localStorage
+      const bankKey = `imageBank_${email}`
+      const bankedData = JSON.parse(localStorage.getItem(bankKey) || '[]')
 
-      if (response.ok) {
-        const data = await response.json()
-        setBankedImages(data.bankedItems || [])
-      }
+      // Transform to match BankedImage interface
+      const images = bankedData.map((item: Record<string, unknown>) => ({
+        id: item.id,
+        filename: item.fileName,
+        imageUrl: item.imageUrl,
+        owner: item.owner,
+        uploadedAt: item.uploadDate,
+        size: item.fileSize,
+        status: 'banked',
+        approved: item.approved || false,
+        notes: item.notes,
+        publishDate: item.publishDate
+      }))
+
+      setBankedImages(images)
     } catch (error) {
       console.error('Error fetching banked images:', error)
     } finally {
@@ -70,7 +91,7 @@ export default function ImageBank() {
     }
   }
 
-  const moveToQueue = async () => {
+  const approveImages = async () => {
     if (selectedImages.size === 0) return
 
     const email = localStorage.getItem('uploader_email')
@@ -78,27 +99,68 @@ export default function ImageBank() {
 
     setIsLoading(true)
     try {
-      const promises = Array.from(selectedImages).map(recordId =>
-        fetch('/api/airtable/bank/move-to-queue', {
+      // Update localStorage
+      const bankKey = `imageBank_${email}`
+      const bankedData = JSON.parse(localStorage.getItem(bankKey) || '[]')
+
+      const updatedData = bankedData.map((item: Record<string, unknown>) =>
+        selectedImages.has(item.id as string) ? { ...item, approved: true } : item
+      )
+
+      localStorage.setItem(bankKey, JSON.stringify(updatedData))
+
+      // Keep images selected after approval so user can immediately move to queue
+      fetchBankedImages()
+    } catch (error) {
+      console.error('Error approving images:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const moveToQueue = async () => {
+    if (selectedImages.size === 0) return
+
+    const email = localStorage.getItem('uploader_email')
+    if (!email) return
+
+    // Check if all selected images are approved
+    const unapprovedImages = bankedImages.filter(
+      img => selectedImages.has(img.id) && !img.approved
+    )
+
+    if (unapprovedImages.length > 0) {
+      alert('All images must be approved before moving to queue. Please approve them first.')
+      return
+    }
+
+    setIsLoading(true)
+    try {
+      // Get image data from localStorage
+      const bankKey = `imageBank_${email}`
+      const bankedData = JSON.parse(localStorage.getItem(bankKey) || '[]')
+
+      const promises = Array.from(selectedImages).map(recordId => {
+        const imageData = bankedData.find((item: Record<string, unknown>) => item.id === recordId)
+        if (!imageData) return Promise.resolve()
+
+        return fetch('/api/airtable/bank/move-to-queue', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ recordId, publishDate: publishDate || undefined })
+          body: JSON.stringify({
+            email,
+            recordId,
+            publishDate: publishDate || undefined,
+            imageData
+          })
         })
-      )
+      })
 
       await Promise.all(promises)
 
-      // Create notification
-      await fetch('/api/notifications', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email,
-          type: 'system',
-          title: 'Images Moved to Queue',
-          message: `Successfully moved ${selectedImages.size} image${selectedImages.size > 1 ? 's' : ''} from Image Bank to publishing queue`
-        })
-      })
+      // Remove moved images from localStorage
+      const remainingData = bankedData.filter((item: Record<string, unknown>) => !selectedImages.has(item.id as string))
+      localStorage.setItem(bankKey, JSON.stringify(remainingData))
 
       setSelectedImages(new Set())
       setPublishDate('')
@@ -108,6 +170,75 @@ export default function ImageBank() {
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const openEditModal = (imageId: string) => {
+    const email = localStorage.getItem('uploader_email')
+    if (!email) return
+
+    const bankKey = `imageBank_${email}`
+    const bankedData = JSON.parse(localStorage.getItem(bankKey) || '[]')
+    const image = bankedData.find((item: Record<string, unknown>) => item.id === imageId)
+
+    if (!image) return
+
+    setEditFormData({
+      filename: image.fileName || '',
+      owner: image.owner || '',
+      notes: image.notes || '',
+      publishDate: image.publishDate || ''
+    })
+    setEditingImageId(imageId)
+  }
+
+  const saveEdit = () => {
+    if (!editingImageId) return
+
+    const email = localStorage.getItem('uploader_email')
+    if (!email) return
+
+    const bankKey = `imageBank_${email}`
+    const bankedData = JSON.parse(localStorage.getItem(bankKey) || '[]')
+
+    const updatedData = bankedData.map((item: Record<string, unknown>) =>
+      item.id === editingImageId
+        ? {
+            ...item,
+            fileName: editFormData.filename,
+            owner: editFormData.owner,
+            notes: editFormData.notes,
+            publishDate: editFormData.publishDate
+          }
+        : item
+    )
+
+    localStorage.setItem(bankKey, JSON.stringify(updatedData))
+    setEditingImageId(null)
+    fetchBankedImages()
+  }
+
+  const closeEditModal = () => {
+    setEditingImageId(null)
+  }
+
+  const deleteImage = (imageId: string) => {
+    if (!confirm('Are you sure you want to delete this image?')) return
+
+    const email = localStorage.getItem('uploader_email')
+    if (!email) return
+
+    const bankKey = `imageBank_${email}`
+    const bankedData = JSON.parse(localStorage.getItem(bankKey) || '[]')
+    const remainingData = bankedData.filter((item: Record<string, unknown>) => item.id !== imageId)
+
+    localStorage.setItem(bankKey, JSON.stringify(remainingData))
+
+    // Remove from selected if it was selected
+    const newSelected = new Set(selectedImages)
+    newSelected.delete(imageId)
+    setSelectedImages(newSelected)
+
+    fetchBankedImages()
   }
 
   const formatDate = (dateString: string) => {
@@ -162,6 +293,18 @@ export default function ImageBank() {
 
               {selectedImages.size > 0 && (
                 <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                  <button
+                    onClick={approveImages}
+                    disabled={isLoading}
+                    className="px-6 py-2 rounded-lg font-medium transition-all disabled:opacity-50"
+                    style={{
+                      backgroundColor: '#10b981',
+                      color: 'white'
+                    }}
+                  >
+                    Approve Selected
+                  </button>
+
                   <input
                     type="datetime-local"
                     value={publishDate}
@@ -199,7 +342,9 @@ export default function ImageBank() {
               style={{
                 borderWidth: '4px',
                 borderStyle: 'solid',
-                borderColor: theme.colors.accent,
+                borderLeftColor: theme.colors.accent,
+                borderRightColor: theme.colors.accent,
+                borderBottomColor: theme.colors.accent,
                 borderTopColor: 'transparent'
               }}
             />
@@ -233,7 +378,7 @@ export default function ImageBank() {
               <div
                 key={image.id}
                 onClick={() => toggleImageSelection(image.id)}
-                className="rounded-lg border overflow-hidden cursor-pointer transition-all hover:shadow-lg"
+                className="group rounded-lg border overflow-hidden cursor-pointer transition-all hover:shadow-lg"
                 style={{
                   backgroundColor: theme.colors.surface,
                   borderColor: selectedImages.has(image.id) ? theme.colors.accent : theme.colors.border,
@@ -254,12 +399,47 @@ export default function ImageBank() {
                       </svg>
                     </div>
                   )}
+
+                  {/* Edit/Delete buttons on hover */}
+                  <div className="absolute bottom-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        openEditModal(image.id)
+                      }}
+                      className="p-2 bg-white text-gray-800 rounded-full hover:bg-gray-100 transition-colors shadow-lg"
+                      title="Edit image details"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        deleteImage(image.id)
+                      }}
+                      className="p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors shadow-lg"
+                      title="Delete image"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
 
                 <div className="p-4">
-                  <h3 className="font-medium mb-2 truncate" style={{ color: theme.colors.text }}>
-                    {image.filename}
-                  </h3>
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="font-medium truncate" style={{ color: theme.colors.text }}>
+                      {image.filename}
+                    </h3>
+                    {image.approved && (
+                      <span className="ml-2 px-2 py-1 text-xs rounded-full" style={{ backgroundColor: '#10b981', color: 'white' }}>
+                        ✓ Approved
+                      </span>
+                    )}
+                  </div>
                   {image.owner && (
                     <p className="text-sm mb-1" style={{ color: theme.colors.textSecondary }}>
                       Owner: {image.owner}
@@ -277,6 +457,99 @@ export default function ImageBank() {
           </div>
         )}
       </main>
+
+      {/* Edit Image Details Modal */}
+      {editingImageId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="max-w-md w-full rounded-2xl p-6 shadow-2xl" style={{ backgroundColor: theme.colors.background }}>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold" style={{ color: theme.colors.text }}>Edit Image Details</h3>
+              <button
+                onClick={closeEditModal}
+                className="p-2 rounded-lg transition-colors hover:bg-gray-100"
+                style={{ color: theme.colors.text }}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: theme.colors.text }}>
+                  File Name
+                </label>
+                <input
+                  type="text"
+                  value={editFormData.filename}
+                  onChange={(e) => setEditFormData({ ...editFormData, filename: e.target.value })}
+                  className="w-full px-4 py-3 rounded-lg border-2 focus:outline-none focus:ring-2"
+                  style={{ borderColor: theme.colors.border, backgroundColor: theme.colors.surface, color: theme.colors.text }}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: theme.colors.text }}>
+                  Publish Date
+                </label>
+                <input
+                  type="date"
+                  value={editFormData.publishDate}
+                  onChange={(e) => setEditFormData({ ...editFormData, publishDate: e.target.value })}
+                  className="w-full px-4 py-3 rounded-lg border-2 focus:outline-none focus:ring-2"
+                  style={{ borderColor: theme.colors.border, backgroundColor: theme.colors.surface, color: theme.colors.text }}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: theme.colors.text }}>
+                  Owner
+                </label>
+                <input
+                  type="text"
+                  value={editFormData.owner}
+                  onChange={(e) => setEditFormData({ ...editFormData, owner: e.target.value })}
+                  placeholder="Image owner/client..."
+                  className="w-full px-4 py-3 rounded-lg border-2 focus:outline-none focus:ring-2"
+                  style={{ borderColor: theme.colors.border, backgroundColor: theme.colors.surface, color: theme.colors.text }}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: theme.colors.text }}>
+                  Notes
+                </label>
+                <textarea
+                  value={editFormData.notes}
+                  onChange={(e) => setEditFormData({ ...editFormData, notes: e.target.value })}
+                  placeholder="Add notes about this image..."
+                  rows={3}
+                  className="w-full px-4 py-3 rounded-lg border-2 focus:outline-none focus:ring-2 resize-none"
+                  style={{ borderColor: theme.colors.border, backgroundColor: theme.colors.surface, color: theme.colors.text }}
+                />
+              </div>
+
+              <div className="flex space-x-3">
+                <button
+                  onClick={saveEdit}
+                  className="flex-1 px-4 py-3 rounded-lg font-medium transition-colors"
+                  style={{ backgroundColor: theme.colors.accent, color: theme.colors.background }}
+                >
+                  Save Changes
+                </button>
+                <button
+                  onClick={closeEditModal}
+                  className="px-4 py-3 rounded-lg font-medium transition-colors"
+                  style={{ backgroundColor: theme.colors.surface, color: theme.colors.text }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

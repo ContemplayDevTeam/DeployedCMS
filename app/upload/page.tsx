@@ -63,9 +63,16 @@ export default function Home() {
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteMessage, setInviteMessage] = useState('')
 
-  // Image Bank state
-  const [saveToBank, setSaveToBank] = useState(false)
-  const [bankErrorMessage, setBankErrorMessage] = useState('')
+  // Image Bank - all uploads now go to bank by default (no longer needed but kept for backwards compatibility)
+
+  // Edit modal state
+  const [editingItemId, setEditingItemId] = useState<string | null>(null)
+  const [editFormData, setEditFormData] = useState({
+    notes: '',
+    publishDate: '',
+    owner: '',
+    fileName: ''
+  })
 
 
   useEffect(() => {
@@ -448,9 +455,9 @@ export default function Home() {
         return
       }
 
-      const destination = saveToBank ? 'Image Bank' : 'Queue'
-      setStatus(`Sending ${completedUploads.length} items to Airtable ${destination}...`)
-      console.log(`📤 Preparing to send items to Airtable ${destination}...`)
+      const destination = 'Image Bank'
+      setStatus(`Sending ${completedUploads.length} items to ${destination}...`)
+      console.log(`📤 Preparing to send items to ${destination}...`)
 
       // Send each item individually with enhanced fields using the enhanced API
       let successCount = 0
@@ -460,7 +467,7 @@ export default function Home() {
       for (let i = 0; i < completedUploads.length; i++) {
         const { item, cloudinaryUrl } = completedUploads[i]
 
-        setStatus(`Adding item ${i + 1}/${completedUploads.length} to Airtable queue...`)
+        setStatus(`Adding item ${i + 1}/${completedUploads.length} to Image Bank...`)
 
         try {
           // Process filename with prefix if provided
@@ -468,8 +475,8 @@ export default function Home() {
             ? `${defaultFileName}_${item.file.name}`
             : item.file.name
 
-          // Use bank endpoint if saveToBank is true, otherwise use queue endpoint
-          const endpoint = saveToBank ? '/api/airtable/bank/add' : '/api/airtable/queue/add'
+          // All uploads now go to bank
+          const endpoint = '/api/airtable/bank/add'
 
           const response = await fetch(endpoint, {
             method: 'POST',
@@ -492,6 +499,14 @@ export default function Home() {
           })
 
           if (response.ok) {
+            const result = await response.json()
+
+            // Save to localStorage
+            const bankKey = `imageBank_${storedEmail}`
+            const existingBank = JSON.parse(localStorage.getItem(bankKey) || '[]')
+            existingBank.push(result.bankedItem)
+            localStorage.setItem(bankKey, JSON.stringify(existingBank))
+
             successCount++
           } else {
             errorCount++
@@ -539,8 +554,8 @@ export default function Home() {
         
         setStatus(`Processed ${bulkResult.summary.successful} items, ${bulkResult.summary.failed} failed. Errors: ${errorDetails}`)
       } else {
-        const destination = saveToBank ? 'Image Bank' : 'Publishing Queue'
-        setStatus(`Successfully added ${bulkResult.summary.successful} items to ${destination}`)
+        const destination = 'Image Bank'
+        setStatus(`Successfully added ${bulkResult.summary.successful} items to ${destination}. Go to Image Bank to approve them.`)
 
         // Create notification for successful upload
         try {
@@ -549,9 +564,9 @@ export default function Home() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               email: storedEmail,
-              type: saveToBank ? 'system' : 'queue_completed',
-              title: saveToBank ? 'Images Banked' : 'Images Queued',
-              message: `Successfully added ${bulkResult.summary.successful} image${bulkResult.summary.successful > 1 ? 's' : ''} to ${destination}`
+              type: 'system',
+              title: 'Images Banked',
+              message: `Successfully added ${bulkResult.summary.successful} image${bulkResult.summary.successful > 1 ? 's' : ''} to ${destination}. Please approve them before they can be queued.`
             })
           })
         } catch (error) {
@@ -588,6 +603,42 @@ export default function Home() {
       return []
     })
     setStatus('Queue cleared')
+  }
+
+  const openEditModal = (itemId: string) => {
+    const item = queue.find(q => q.id === itemId)
+    if (!item) return
+
+    setEditFormData({
+      notes: item.notes || '',
+      publishDate: item.publishDate || defaultPublishDate,
+      owner: item.owner || '',
+      fileName: item.file.name
+    })
+    setEditingItemId(itemId)
+  }
+
+  const saveEdit = () => {
+    if (!editingItemId) return
+
+    setQueue(prev => prev.map(item => {
+      if (item.id === editingItemId) {
+        return {
+          ...item,
+          notes: editFormData.notes,
+          publishDate: editFormData.publishDate,
+          owner: editFormData.owner,
+          file: new File([item.file], editFormData.fileName, { type: item.file.type })
+        }
+      }
+      return item
+    }))
+
+    setEditingItemId(null)
+  }
+
+  const closeEditModal = () => {
+    setEditingItemId(null)
   }
 
   const pendingCount = queue.filter(item => item.status === 'pending').length
@@ -679,112 +730,6 @@ export default function Home() {
                 </p>
               </div>
 
-              {/* Enhanced Upload Settings */}
-              <div className="max-w-2xl mx-auto mb-8 p-6 rounded-xl border" style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold" style={{ color: theme.colors.text }}>Upload Settings</h3>
-                </div>
-                <div className="grid md:grid-cols-2 gap-4">
-
-                  {/* Publish Date */}
-                  <div>
-                    <label className="block text-sm font-medium mb-2" style={{ color: theme.colors.textSecondary }}>
-                      Publish Date
-                    </label>
-                    <input
-                      type="date"
-                      value={defaultPublishDate}
-                      onChange={(e) => setDefaultPublishDate(e.target.value)}
-                      className="w-full px-3 py-2 border rounded-lg text-sm"
-                      style={{ borderColor: theme.colors.border, backgroundColor: theme.colors.background, color: theme.colors.text }}
-                    />
-                  </div>
-
-                  {/* Default Notes */}
-                  <div>
-                    <label className="block text-sm font-medium mb-2" style={{ color: theme.colors.textSecondary }}>
-                      Default Notes
-                    </label>
-                    <input
-                      type="text"
-                      value={defaultNotes}
-                      onChange={(e) => setDefaultNotes(e.target.value)}
-                      placeholder="Optional notes..."
-                      className="w-full px-3 py-2 border rounded-lg text-sm"
-                      style={{ borderColor: theme.colors.border, backgroundColor: theme.colors.background, color: theme.colors.text }}
-                    />
-                  </div>
-
-                  {/* Default Owner */}
-                  <div>
-                    <label className="block text-sm font-medium mb-2" style={{ color: theme.colors.textSecondary }}>
-                      Default Owner
-                    </label>
-                    <input
-                      type="text"
-                      value={defaultOwner}
-                      onChange={(e) => setDefaultOwner(e.target.value)}
-                      placeholder="Image owner/client..."
-                      className="w-full px-3 py-2 border rounded-lg text-sm"
-                      style={{ borderColor: theme.colors.border, backgroundColor: theme.colors.background, color: theme.colors.text }}
-                    />
-                  </div>
-
-                  {/* Default File Name */}
-                  <div>
-                    <label className="block text-sm font-medium mb-2" style={{ color: theme.colors.textSecondary }}>
-                      File Name Prefix
-                    </label>
-                    <input
-                      type="text"
-                      value={defaultFileName}
-                      onChange={(e) => setDefaultFileName(e.target.value)}
-                      placeholder="Optional filename prefix..."
-                      className="w-full px-3 py-2 border rounded-lg text-sm"
-                      style={{ borderColor: theme.colors.border, backgroundColor: theme.colors.background, color: theme.colors.text }}
-                    />
-                  </div>
-                </div>
-
-                {/* Save to Image Bank Checkbox */}
-                <div className="flex flex-col space-y-2 mt-4">
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      id="saveToBank"
-                      checked={saveToBank}
-                      disabled={queue.length === 0}
-                      onChange={(e) => {
-                        if (queue.length === 0) {
-                          setBankErrorMessage('You cannot save to Image Bank without any images in the dropzone')
-                          setTimeout(() => setBankErrorMessage(''), 3000)
-                        } else {
-                          setSaveToBank(e.target.checked)
-                        }
-                      }}
-                      className="w-4 h-4 rounded border cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                      style={{ borderColor: theme.colors.border, accentColor: theme.colors.accent }}
-                    />
-                    <label htmlFor="saveToBank" className={`text-sm ${queue.length === 0 ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`} style={{ color: theme.colors.text }}>
-                      Save to Image Bank (don&apos;t add to publishing queue)
-                    </label>
-                  </div>
-                  {bankErrorMessage && (
-                    <div className="text-xs ml-6 px-3 py-2 rounded-lg animate-pulse" style={{ backgroundColor: `${theme.colors.error}20`, color: theme.colors.error }}>
-                      {bankErrorMessage}
-                    </div>
-                  )}
-                  {saveToBank && !bankErrorMessage && (
-                    <Link
-                      href="/bank"
-                      className="text-xs ml-6 underline hover:opacity-80 transition-opacity"
-                      style={{ color: theme.colors.accent }}
-                    >
-                      → View Image Bank
-                    </Link>
-                  )}
-                </div>
-              </div>
 
 
 
@@ -875,11 +820,25 @@ export default function Home() {
                             )}
 
                             {/* Status Overlay */}
-                            <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
-                              <div className="text-center text-white text-xs">
+                            <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex flex-col items-center justify-center">
+                              <div className="text-center text-white text-xs mb-2">
                                 <p className="font-medium mb-1 truncate px-2">{item.file.name}</p>
                                 <p>{(item.file.size / 1024 / 1024).toFixed(1)} MB</p>
                               </div>
+                              {item.status === 'pending' && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    openEditModal(item.id)
+                                  }}
+                                  className="p-2 bg-white text-gray-800 rounded-full hover:bg-gray-100 transition-colors"
+                                  title="Edit photo details"
+                                >
+                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                  </svg>
+                                </button>
+                              )}
                             </div>
 
                             {/* Status Badge */}
@@ -1227,6 +1186,99 @@ export default function Home() {
                     setInviteEmail('')
                     setInviteMessage('')
                   }}
+                  className="px-4 py-3 rounded-lg font-medium transition-colors"
+                  style={{ backgroundColor: theme.colors.surface, color: theme.colors.text }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Photo Details Modal */}
+      {editingItemId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="max-w-md w-full rounded-2xl p-6 shadow-2xl" style={{ backgroundColor: theme.colors.background }}>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold" style={{ color: theme.colors.text }}>Edit Photo Details</h3>
+              <button
+                onClick={closeEditModal}
+                className="p-2 rounded-lg transition-colors hover:bg-gray-100"
+                style={{ color: theme.colors.text }}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: theme.colors.text }}>
+                  File Name
+                </label>
+                <input
+                  type="text"
+                  value={editFormData.fileName}
+                  onChange={(e) => setEditFormData({ ...editFormData, fileName: e.target.value })}
+                  className="w-full px-4 py-3 rounded-lg border-2 focus:outline-none focus:ring-2"
+                  style={{ borderColor: theme.colors.border, backgroundColor: theme.colors.surface, color: theme.colors.text }}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: theme.colors.text }}>
+                  Publish Date
+                </label>
+                <input
+                  type="date"
+                  value={editFormData.publishDate}
+                  onChange={(e) => setEditFormData({ ...editFormData, publishDate: e.target.value })}
+                  className="w-full px-4 py-3 rounded-lg border-2 focus:outline-none focus:ring-2"
+                  style={{ borderColor: theme.colors.border, backgroundColor: theme.colors.surface, color: theme.colors.text }}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: theme.colors.text }}>
+                  Owner
+                </label>
+                <input
+                  type="text"
+                  value={editFormData.owner}
+                  onChange={(e) => setEditFormData({ ...editFormData, owner: e.target.value })}
+                  placeholder="Image owner/client..."
+                  className="w-full px-4 py-3 rounded-lg border-2 focus:outline-none focus:ring-2"
+                  style={{ borderColor: theme.colors.border, backgroundColor: theme.colors.surface, color: theme.colors.text }}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: theme.colors.text }}>
+                  Notes
+                </label>
+                <textarea
+                  value={editFormData.notes}
+                  onChange={(e) => setEditFormData({ ...editFormData, notes: e.target.value })}
+                  placeholder="Add notes about this image..."
+                  rows={3}
+                  className="w-full px-4 py-3 rounded-lg border-2 focus:outline-none focus:ring-2 resize-none"
+                  style={{ borderColor: theme.colors.border, backgroundColor: theme.colors.surface, color: theme.colors.text }}
+                />
+              </div>
+
+              <div className="flex space-x-3">
+                <button
+                  onClick={saveEdit}
+                  className="flex-1 px-4 py-3 rounded-lg font-medium transition-colors"
+                  style={{ backgroundColor: theme.colors.accent, color: theme.colors.background }}
+                >
+                  Save Changes
+                </button>
+                <button
+                  onClick={closeEditModal}
                   className="px-4 py-3 rounded-lg font-medium transition-colors"
                   style={{ backgroundColor: theme.colors.surface, color: theme.colors.text }}
                 >

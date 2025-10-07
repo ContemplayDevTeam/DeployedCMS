@@ -5,11 +5,18 @@ export async function POST(request: NextRequest) {
   console.log('📤 Move banked image to queue endpoint called')
 
   try {
-    const { email, recordId, publishDate } = await request.json()
+    const { email, recordId, publishDate, imageData } = await request.json()
 
     if (!email || !recordId) {
       return NextResponse.json(
         { error: 'Email and record ID are required' },
+        { status: 400 }
+      )
+    }
+
+    if (!imageData) {
+      return NextResponse.json(
+        { error: 'Image data is required' },
         { status: 400 }
       )
     }
@@ -26,30 +33,24 @@ export async function POST(request: NextRequest) {
 
     const airtable = new AirtableBackend(apiKey, baseId)
 
-    // Verify user
-    const user = await airtable.getUser(email)
-    if (!user || !user.isVerified) {
-      return NextResponse.json(
-        { error: 'User not found or not verified' },
-        { status: 403 }
-      )
-    }
+    // Now send to Airtable Queue
+    const queueItem = await airtable.queueImage(email, {
+      url: imageData.imageUrl,
+      name: imageData.fileName,
+      size: imageData.fileSize,
+      notes: imageData.notes,
+      publishDate: publishDate || new Date().toISOString().split('T')[0],
+      metadata: imageData.metadata,
+      tags: imageData.tags,
+      owner: imageData.owner
+    })
 
-    // Move to queue
-    const success = await airtable.moveBankedToQueue(recordId, publishDate)
-
-    if (!success) {
-      return NextResponse.json(
-        { error: 'Failed to move image to queue' },
-        { status: 500 }
-      )
-    }
-
-    console.log('✅ Successfully moved banked image to queue')
+    console.log('✅ Successfully moved banked image to Airtable queue:', queueItem.id)
 
     return NextResponse.json({
       success: true,
-      message: 'Image moved to queue successfully'
+      message: 'Image moved to queue successfully',
+      queueItem
     })
   } catch (error) {
     console.error('💥 Error moving banked image to queue:', error)

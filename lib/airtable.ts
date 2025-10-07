@@ -28,6 +28,7 @@ interface QueueItem {
   processingTime?: number
   metadata?: Record<string, unknown>
   owner?: string
+  approved?: boolean
 }
 
 interface Notification {
@@ -380,7 +381,7 @@ export class AirtableBackend {
         'File Name': imageData.name,
         'File Size': imageData.size,
         'Upload Date': new Date().toISOString().split('T')[0],
-        'Status': 'banked'
+        'Approved': false
       }
 
       // Add optional fields if provided
@@ -422,7 +423,8 @@ export class AirtableBackend {
         notes: record.fields['Notes'] as string,
         tags: record.fields['Tags'] as string[],
         metadata: record.fields['Metadata'] ? JSON.parse(record.fields['Metadata'] as string) : undefined,
-        owner: record.fields['Owner'] as string
+        owner: record.fields['Owner'] as string,
+        approved: record.fields['Approved'] as boolean || false
       }
 
       console.log('✅ Image banked successfully:', bankedItem.id)
@@ -430,6 +432,33 @@ export class AirtableBackend {
     } catch (error) {
       console.error('❌ Error banking image:', error)
       throw new Error(`Failed to bank image ${imageData.name}: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
+  }
+
+  // Approve a banked image
+  async approveImage(recordId: string): Promise<boolean> {
+    console.log('✅ Approving banked image:', recordId)
+
+    try {
+      const payload = {
+        records: [{
+          id: recordId,
+          fields: {
+            'Approved': true
+          }
+        }]
+      }
+
+      await this.makeRequest(`/${this.tableIds.queue}`, {
+        method: 'PATCH',
+        body: JSON.stringify(payload)
+      })
+
+      console.log('✅ Successfully approved image:', recordId)
+      return true
+    } catch (error) {
+      console.error('❌ Error approving image:', error)
+      return false
     }
   }
 
@@ -463,10 +492,10 @@ export class AirtableBackend {
     }
   }
 
-  // Get banked images (not in queue)
+  // Get banked images (images without a publish date are considered banked)
   async getBankedImages(userEmail: string): Promise<QueueItem[]> {
     try {
-      const response = await this.makeRequest(`/${this.tableIds.queue}?filterByFormula=${encodeURIComponent(`AND({User Email} = '${userEmail}', {Status} = 'banked')`)}&sort[0][field]=Upload Date&sort[0][direction]=desc`)
+      const response = await this.makeRequest(`/${this.tableIds.queue}?filterByFormula=${encodeURIComponent(`AND({User Email} = '${userEmail}', {Publish Date} = BLANK())`)}&sort[0][field]=Upload Date&sort[0][direction]=desc`)
 
       return response.records.map((record: { id: string; fields: Record<string, unknown> }) => ({
         id: record.id,
@@ -479,7 +508,8 @@ export class AirtableBackend {
         notes: record.fields['Notes'] as string || '',
         tags: record.fields['Tags'] as string[] || [],
         metadata: record.fields['Metadata'] ? JSON.parse(record.fields['Metadata'] as string) : undefined,
-        owner: record.fields['Owner'] as string || ''
+        owner: record.fields['Owner'] as string || '',
+        approved: record.fields['Approved'] as boolean || false
       }))
     } catch (error) {
       console.error('Error getting banked images:', error)

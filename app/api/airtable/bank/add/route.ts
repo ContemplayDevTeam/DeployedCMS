@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { AirtableBackend } from '@/lib/airtable'
 
 export async function POST(request: NextRequest) {
-  console.log('🏦 Airtable bank add endpoint called')
+  console.log('🏦 Bank add endpoint called (local storage)')
 
   try {
     const { email, imageData } = await request.json()
@@ -16,60 +15,22 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const apiKey = process.env.AIRTABLE_API_KEY
-    const baseId = process.env.AIRTABLE_BASE_ID
-
-    console.log('🔧 Airtable config check:', {
-      apiKey: apiKey ? 'Present' : 'Missing',
-      baseId: baseId ? 'Present' : 'Missing'
-    })
-
-    if (!apiKey || !baseId) {
-      console.error('❌ Missing Airtable configuration')
-      return NextResponse.json(
-        { error: 'Airtable configuration missing' },
-        { status: 500 }
-      )
-    }
-
-    const airtable = new AirtableBackend(apiKey, baseId)
-
-    // Verify user exists (removed verification check - if they logged in, they can upload)
-    console.log('👤 Looking up user:', email)
-    const user = await airtable.getUser(email)
-    if (!user) {
-      console.error('❌ User not found:', email)
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      )
-    }
-
-    console.log('✅ User found:', { id: user.id })
-
-    // Bank the image
-    console.log('🏦 Banking image:', {
+    // Create banked item (stored client-side in local storage)
+    const bankedItem = {
+      id: `bank_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       userEmail: email,
       imageUrl: imageData.url,
       fileName: imageData.name,
       fileSize: imageData.size,
-      notes: imageData.notes
-    })
+      uploadDate: new Date().toISOString(),
+      notes: imageData.notes || '',
+      metadata: imageData.metadata || {},
+      tags: imageData.tags || [],
+      owner: imageData.owner || '',
+      approved: false
+    }
 
-    const bankedItem = await airtable.bankImage(email, {
-      url: imageData.url,
-      name: imageData.name,
-      size: imageData.size,
-      notes: imageData.notes,
-      metadata: imageData.metadata,
-      tags: imageData.tags,
-      owner: imageData.owner
-    })
-
-    // Update user stats - increment upload count and storage
-    await airtable.updateUserStats(email, 1, imageData.size || 0)
-
-    console.log('✅ Image banked successfully:', bankedItem.id)
+    console.log('✅ Image banked successfully (client-side):', bankedItem.id)
 
     return NextResponse.json({
       success: true,

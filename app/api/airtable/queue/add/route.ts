@@ -45,15 +45,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    console.log('✅ User found:', { id: user.id, isVerified: user.isVerified })
-
-    if (!user.isVerified) {
-      console.error('❌ User not verified:', email)
-      return NextResponse.json(
-        { error: 'User not verified' },
-        { status: 403 }
-      )
-    }
+    console.log('✅ User found:', { id: user.id })
 
     // Queue the image
     console.log('📤 Queuing image:', {
