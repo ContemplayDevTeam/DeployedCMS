@@ -29,6 +29,7 @@ interface QueueItem {
   metadata?: Record<string, unknown>
   owner?: string
   approved?: boolean
+  experienceType?: string
 }
 
 interface Notification {
@@ -271,6 +272,7 @@ export class AirtableBackend {
     metadata?: Record<string, unknown>
     tags?: string[]
     owner?: string
+    experienceType?: string
   }): Promise<QueueItem> {
     console.log('📤 Starting image queue process...')
     
@@ -304,6 +306,9 @@ export class AirtableBackend {
       }
       if (imageData.owner) {
         fields['Owner'] = imageData.owner
+      }
+      if (imageData.experienceType) {
+        fields['Experience Type'] = imageData.experienceType
       }
 
       const payload = {

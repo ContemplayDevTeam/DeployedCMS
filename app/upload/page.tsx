@@ -1103,7 +1103,7 @@ export default function Home() {
             </div>
 
             <p className="text-sm mb-4" style={{ color: theme.colors.textSecondary }}>
-              Invite team members to collaborate in your workspace. They&apos;ll need the workspace code from your login page.
+              Send an invitation email with a magic link. When they click it, they&apos;ll be automatically logged in with access to your workspace theme - no password needed!
             </p>
 
             <div className="space-y-4">
@@ -1135,16 +1135,6 @@ export default function Home() {
                 />
               </div>
 
-              <div className="bg-opacity-20 p-4 rounded-lg" style={{ backgroundColor: theme.colors.accent }}>
-                <p className="text-sm font-medium mb-1" style={{ color: theme.colors.text }}>Workspace Code:</p>
-                <p className="text-lg font-mono font-bold" style={{ color: theme.colors.accent }}>
-                  {localStorage.getItem('theme_password') || 'No code set'}
-                </p>
-                <p className="text-xs mt-2" style={{ color: theme.colors.textSecondary }}>
-                  Share this code with your team members so they can access this workspace theme.
-                </p>
-              </div>
-
               <div className="flex space-x-3">
                 <button
                   onClick={async () => {
@@ -1162,23 +1152,29 @@ export default function Home() {
                         })
                       })
 
+                      const data = await response.json()
+
                       if (response.ok) {
-                        setInviteMessage('Invitation sent successfully!')
+                        setInviteMessage('✓ Email invitation will be sent! (Email service not configured yet - invite link logged to console)')
+                        console.log('📧 INVITE LINK:', data.inviteLink)
                         setTimeout(() => {
                           setShowShareModal(false)
                           setInviteEmail('')
                           setInviteMessage('')
-                        }, 2000)
+                        }, 3000)
+                      } else {
+                        setInviteMessage('Error: ' + (data.error || 'Failed to send invite'))
                       }
                     } catch (error) {
                       console.error('Invite error:', error)
+                      setInviteMessage('Error sending invite. Please try again.')
                     }
                   }}
                   disabled={!inviteEmail}
                   className="flex-1 px-4 py-3 rounded-lg font-medium transition-colors disabled:opacity-50"
                   style={{ backgroundColor: theme.colors.accent, color: theme.colors.background }}
                 >
-                  Send Invite
+                  Send Invitation Email
                 </button>
                 <button
                   onClick={() => {

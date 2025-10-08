@@ -140,6 +140,9 @@ export default function ImageBank() {
       const bankKey = `imageBank_${email}`
       const bankedData = JSON.parse(localStorage.getItem(bankKey) || '[]')
 
+      // Get workspace code from localStorage
+      const workspaceCode = localStorage.getItem('theme_password') || undefined
+
       const promises = Array.from(selectedImages).map(recordId => {
         const imageData = bankedData.find((item: Record<string, unknown>) => item.id === recordId)
         if (!imageData) return Promise.resolve()
@@ -151,7 +154,8 @@ export default function ImageBank() {
             email,
             recordId,
             publishDate: publishDate || undefined,
-            imageData
+            imageData,
+            workspaceCode
           })
         })
       })

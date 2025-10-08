@@ -14,12 +14,13 @@ import { AirtableBackend } from '@/lib/airtable'
 
 export async function POST(request: NextRequest) {
   console.log('🚀 Airtable bulk queue add endpoint called')
-  
+
   try {
-    const { email, queueItems } = await request.json()
-    console.log('📋 Request data:', { 
-      email, 
-      queueItemCount: queueItems?.length || 0 
+    const { email, queueItems, workspaceCode } = await request.json()
+    console.log('📋 Request data:', {
+      email,
+      queueItemCount: queueItems?.length || 0,
+      workspaceCode: workspaceCode || 'none'
     })
 
     if (!email || !queueItems || !Array.isArray(queueItems) || queueItems.length === 0) {
@@ -66,21 +67,37 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ User found:', { id: user.id })
 
+    // Map workspace code to experience type Airtable record ID
+    const workspaceToExperienceType: Record<string, string> = {
+      'homegrownnationalpark': 'recquHAhmVdggGNOp',
+      'hnp': 'recquHAhmVdggGNOp'
+    }
+
+    // Determine experience type based on workspace code
+    const experienceType = workspaceCode
+      ? workspaceToExperienceType[workspaceCode.toLowerCase()] || undefined
+      : undefined
+
+    console.log('🏷️ Experience Type mapping:', {
+      workspaceCode,
+      experienceType: experienceType || 'not set (should be recquHAhmVdggGNOp for HNP)'
+    })
+
     // Process each queue item
     console.log('📤 Processing queue items:', queueItems.length)
-    
+
     const results = []
     const errors = []
 
     for (let i = 0; i < queueItems.length; i++) {
       const item = queueItems[i]
-      
+
       try {
         console.log(`📤 Queuing item ${i + 1}/${queueItems.length}:`, {
           imageUrl: item['Image URL'],
           uploadDate: item['Upload Date'],
-          publishDate: item['Publish Date']
-          // publishTime field removed to test if it's causing the 422 error
+          publishDate: item['Publish Date'],
+          experienceType: experienceType || 'not set'
         })
 
         const queueItem = await airtable.queueImage(email, {
@@ -89,7 +106,8 @@ export async function POST(request: NextRequest) {
           size: 0, // Default size since it's not in the payload
           notes: 'Uploaded via web interface',
           publishDate: item['Publish Date'],
-          metadata: {}
+          metadata: {},
+          experienceType: experienceType
         })
 
         console.log(`✅ Item ${i + 1} queued successfully:`, queueItem.id)
