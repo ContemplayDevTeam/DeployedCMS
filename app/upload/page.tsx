@@ -1,11 +1,10 @@
 
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useDropzone } from 'react-dropzone'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import Lenis from 'lenis'
 import { useTheme } from '../../components/ThemeProvider'
 
 
@@ -26,18 +25,6 @@ interface QueueItem {
   owner?: string
 }
 
-interface AirtableQueueItem {
-  id: string
-  userEmail: string
-  imageUrl: string
-  fileName: string
-  fileSize: number
-  status?: 'queued' | 'banked' | 'processing' | 'published' | 'failed'
-  uploadDate: string
-  publishDate?: string
-  notes?: string
-}
-
 export default function Home() {
   const { theme, setEmailTheme } = useTheme()
   const [email, setEmail] = useState<string>('')
@@ -45,12 +32,7 @@ export default function Home() {
   const [queue, setQueue] = useState<QueueItem[]>([])
   const [status, setStatus] = useState<string>('')
   const [isProcessing, setIsProcessing] = useState<boolean>(false)
-  const [airtableQueueItems, setAirtableQueueItems] = useState<AirtableQueueItem[]>([])
-  const [isLoadingAirtableQueue, setIsLoadingAirtableQueue] = useState(false)
-  const [draggedAirtableItem, setDraggedAirtableItem] = useState<string | null>(null)
-  const [isReorderingAirtable, setIsReorderingAirtable] = useState(false)
   const mainRef = useRef<HTMLDivElement>(null)
-  const sidebarScrollRef = useRef<HTMLDivElement>(null)
 
   // Enhanced fields state
   const [defaultNotes, setDefaultNotes] = useState<string>('')
@@ -95,153 +77,6 @@ export default function Home() {
     }
   }, [])
 
-  const fetchAirtableQueueItems = useCallback(async () => {
-    if (!storedEmail) return
-    
-    setIsLoadingAirtableQueue(true)
-    try {
-      const response = await fetch('/api/airtable/queue/status', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email: storedEmail }),
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        setAirtableQueueItems(data.queueItems || [])
-      } else {
-        console.error('Failed to fetch Airtable queue items')
-      }
-    } catch (error) {
-      console.error('Error fetching Airtable queue items:', error)
-    } finally {
-      setIsLoadingAirtableQueue(false)
-    }
-  }, [storedEmail])
-
-  // Fetch Airtable queue items when user is logged in
-  useEffect(() => {
-    if (storedEmail) {
-      fetchAirtableQueueItems()
-    }
-  }, [storedEmail, fetchAirtableQueueItems])
-
-
-  // Setup Lenis smooth scrolling for sidebar
-  useEffect(() => {
-    if (!sidebarScrollRef.current) return
-
-    const lenis = new Lenis({
-      wrapper: sidebarScrollRef.current,
-      content: sidebarScrollRef.current.firstElementChild as HTMLElement,
-      duration: 0.1,
-      easing: (t: number) => 1 - Math.pow(1 - t, 3),
-    })
-
-    let rafId: number
-
-    function raf(time: number) {
-      lenis.raf(time)
-      rafId = requestAnimationFrame(raf)
-    }
-    rafId = requestAnimationFrame(raf)
-
-    return () => {
-      lenis.destroy()
-      if (rafId) {
-        cancelAnimationFrame(rafId)
-      }
-    }
-  }, [airtableQueueItems.length]) // Re-initialize when queue items change
-
-  const deleteAirtableQueueItem = async (itemId: string) => {
-    console.log('🗑️ Deleting Airtable queue item:', itemId)
-
-    try {
-      const response = await fetch('/api/airtable/queue/delete', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ recordId: itemId }),
-      })
-
-      if (response.ok) {
-        // Remove from frontend state after successful deletion
-        setAirtableQueueItems(prev => prev.filter(item => item.id !== itemId))
-        console.log('✅ Successfully deleted item from Airtable and frontend')
-      } else {
-        const errorData = await response.text()
-        console.error('❌ Failed to delete item from Airtable. Status:', response.status, 'Response:', errorData)
-        alert('Failed to delete item from queue')
-      }
-    } catch (error) {
-      console.error('❌ Error deleting item:', error)
-      alert('Error deleting item from queue')
-    }
-  }
-
-  const moveAirtableItem = async (fromIndex: number, toIndex: number) => {
-    if (fromIndex === toIndex) return
-
-    setIsReorderingAirtable(true)
-    try {
-      // Create new order array
-      const newOrder = [...airtableQueueItems]
-      const [movedItem] = newOrder.splice(fromIndex, 1)
-      newOrder.splice(toIndex, 0, movedItem)
-
-      // Update order (priority is no longer used)
-      const updatedItems = newOrder
-
-      // Send reorder request
-      const response = await fetch('/api/airtable/queue/reorder', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          userEmail: storedEmail,
-          newOrder: updatedItems.map(item => item.id)
-        }),
-      })
-
-      if (response.ok) {
-        setAirtableQueueItems(updatedItems)
-      } else {
-        console.error('Failed to reorder Airtable queue items')
-      }
-    } catch (error) {
-      console.error('Error reordering Airtable queue items:', error)
-    } finally {
-      setIsReorderingAirtable(false)
-    }
-  }
-
-  const handleAirtableDragStart = (e: React.DragEvent, id: string) => {
-    setDraggedAirtableItem(id)
-    e.dataTransfer.effectAllowed = 'move'
-  }
-
-  const handleAirtableDragOver = (e: React.DragEvent) => {
-    e.preventDefault()
-    e.dataTransfer.dropEffect = 'move'
-  }
-
-  const handleAirtableDrop = (e: React.DragEvent, targetId: string) => {
-    e.preventDefault()
-    if (!draggedAirtableItem || draggedAirtableItem === targetId) return
-
-    const draggedIndex = airtableQueueItems.findIndex(item => item.id === draggedAirtableItem)
-    const targetIndex = airtableQueueItems.findIndex(item => item.id === targetId)
-    
-    if (draggedIndex !== -1 && targetIndex !== -1) {
-      moveAirtableItem(draggedIndex, targetIndex)
-    }
-    setDraggedAirtableItem(null)
-  }
 
   const handleSaveEmail = () => {
     // Clear any existing local queue when a new user signs in
@@ -577,9 +412,6 @@ export default function Home() {
       // Clear the local queue after successful processing
       setQueue([])
 
-      // Refresh the Airtable queue to show the newly added items
-      await fetchAirtableQueueItems()
-      
     } catch (error) {
       console.error('Error processing queue:', error)
       setStatus('Error processing queue: ' + (error instanceof Error ? error.message : 'Unknown error'))
@@ -896,140 +728,6 @@ export default function Home() {
                 </div>
               )}
 
-            </div>
-
-            {/* Publishing Queue Sidebar */}
-            <div className="w-80 min-w-80 max-w-80 shadow-lg border-l transition-all duration-300 z-30 h-screen max-h-screen overflow-hidden" style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
-              <div className="h-full flex flex-col">
-                {/* Queue Header */}
-                <div className="p-3 border-b flex-shrink-0" style={{ borderColor: theme.colors.border, backgroundColor: theme.colors.secondary }}>
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-semibold" style={{ color: theme.colors.text }}>
-                      Publishing Queue ({airtableQueueItems.length})
-                      {pendingCount > 0 && <span className="ml-2 text-xs">({pendingCount} pending)</span>}
-                    </h3>
-                    <div className="flex items-center space-x-2">
-                      {queue.length > 0 && (
-                        <button
-                          onClick={clearQueue}
-                          disabled={isProcessing}
-                          className="p-1.5 rounded-md transition-all disabled:opacity-50 hover:bg-red-500 hover:bg-opacity-20 text-red-600"
-                          title="Clear local queue"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
-                      )}
-                      <button
-                        onClick={fetchAirtableQueueItems}
-                        disabled={isLoadingAirtableQueue || isProcessing}
-                        className="p-1.5 rounded-md transition-all disabled:opacity-50 hover:bg-white hover:bg-opacity-20"
-                        style={{ color: theme.colors.textSecondary }}
-                        title="Refresh queue"
-                      >
-                        <svg className={`w-4 h-4 ${isLoadingAirtableQueue ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Queue Items */}
-                <div
-                  ref={sidebarScrollRef}
-                  className="flex-1 overflow-y-auto p-4 min-h-0"
-                >
-                  {airtableQueueItems.length > 0 ? (
-                    <div className="space-y-3">
-                      {airtableQueueItems.map((item, index) => (
-                        <div
-                          key={item.id}
-                          draggable={!isReorderingAirtable}
-                          onDragStart={(e) => handleAirtableDragStart(e, item.id)}
-                          onDragOver={handleAirtableDragOver}
-                          onDrop={(e) => handleAirtableDrop(e, item.id)}
-                          className={`bg-gray-50 rounded-lg p-3 border border-gray-200 hover:border-gray-300 transition-all cursor-move ${
-                            draggedAirtableItem === item.id ? 'opacity-50' : ''
-                          }`}
-                        >
-                          <div className="flex items-start space-x-3">
-                            {/* Queue Number */}
-                            <div className="w-7 h-7 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                              <span className="text-xs font-bold text-blue-600">#{index + 1}</span>
-                            </div>
-
-                            {/* Image thumbnail */}
-                            <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden border border-gray-200">
-                              <img
-                                src={item.imageUrl}
-                                alt={item.fileName || 'Image'}
-                                className="w-full h-full object-cover"
-                                loading="lazy"
-                                decoding="async"
-                                onError={(e) => {
-                                  const target = e.target as HTMLImageElement
-                                  target.style.display = 'none'
-                                }}
-                              />
-                            </div>
-
-                            {/* File info */}
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center justify-between mb-1">
-                                <p className="text-sm font-medium text-gray-900 truncate">{item.fileName || 'Unknown'}</p>
-                              </div>
-
-                              <div className="space-y-2">
-                                <div className="flex items-center justify-between">
-                                  <span className="text-xs px-2 py-1 rounded-full bg-blue-500 text-white">
-                                    In Queue
-                                  </span>
-                                  <button
-                                    onClick={() => deleteAirtableQueueItem(item.id)}
-                                    className="p-1 text-red-400 hover:text-red-600 transition-colors"
-                                    title="Remove from queue"
-                                  >
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
-                                  </button>
-                                </div>
-
-                                <div className="text-xs text-gray-500">
-                                  <span>Uploaded: {new Date(item.uploadDate).toLocaleDateString()}</span>
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Drag handle */}
-                            <div className="flex flex-col space-y-0.5 items-center">
-                              <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
-                              <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
-                              <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
-                              <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
-                              <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
-                              <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center h-full text-center">
-                      <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                        <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                        </svg>
-                      </div>
-                      <h3 className="text-lg font-medium text-gray-900 mb-2">Publishing Queue</h3>
-                      <p className="text-sm text-gray-500">Your processed images will appear here</p>
-                      <p className="text-xs text-gray-400 mt-2">Drop images to get started</p>
-                    </div>
-                  )}
-                </div>
-              </div>
             </div>
           </>
         ) : (

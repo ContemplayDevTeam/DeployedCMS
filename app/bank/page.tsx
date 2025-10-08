@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTheme } from '@/components/ThemeProvider'
 
@@ -17,6 +17,19 @@ interface BankedImage {
   publishDate?: string
 }
 
+interface QueueItem {
+  id: string
+  userEmail: string
+  imageUrl: string
+  fileName: string
+  fileSize: number
+  status?: 'queued' | 'banked' | 'processing' | 'published' | 'failed'
+  uploadDate: string
+  publishDate?: string
+  publishTime?: string
+  notes?: string
+}
+
 export default function ImageBank() {
   const router = useRouter()
   const { theme } = useTheme()
@@ -24,6 +37,14 @@ export default function ImageBank() {
   const [isLoading, setIsLoading] = useState(true)
   const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set())
   const [publishDate, setPublishDate] = useState('')
+  const [publishTime, setPublishTime] = useState('')
+
+  // Queue sidebar state
+  const [queueItems, setQueueItems] = useState<QueueItem[]>([])
+  const [isLoadingQueue, setIsLoadingQueue] = useState(false)
+  const [draggedItem, setDraggedItem] = useState<string | null>(null)
+  const [isReordering, setIsReordering] = useState(false)
+  const sidebarScrollRef = useRef<HTMLDivElement>(null)
 
   // Edit modal state
   const [editingImageId, setEditingImageId] = useState<string | null>(null)
@@ -69,9 +90,116 @@ export default function ImageBank() {
     }
   }, [router])
 
+  const fetchQueueItems = useCallback(async () => {
+    const email = localStorage.getItem('uploader_email')
+    if (!email) return
+
+    setIsLoadingQueue(true)
+    try {
+      const response = await fetch('/api/airtable/queue/status', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setQueueItems(data.queueItems || [])
+      } else {
+        console.error('Failed to fetch queue items')
+      }
+    } catch (error) {
+      console.error('Error fetching queue items:', error)
+    } finally {
+      setIsLoadingQueue(false)
+    }
+  }, [])
+
   useEffect(() => {
     fetchBankedImages()
-  }, [fetchBankedImages])
+    fetchQueueItems()
+  }, [fetchBankedImages, fetchQueueItems])
+
+  const deleteQueueItem = async (itemId: string) => {
+    try {
+      const response = await fetch('/api/airtable/queue/delete', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ recordId: itemId }),
+      })
+
+      if (response.ok) {
+        setQueueItems(prev => prev.filter(item => item.id !== itemId))
+      } else {
+        alert('Failed to delete item from queue')
+      }
+    } catch (error) {
+      console.error('Error deleting item:', error)
+      alert('Error deleting item from queue')
+    }
+  }
+
+  const moveQueueItem = async (fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex) return
+
+    const email = localStorage.getItem('uploader_email')
+    if (!email) return
+
+    setIsReordering(true)
+    try {
+      const newOrder = [...queueItems]
+      const [movedItem] = newOrder.splice(fromIndex, 1)
+      newOrder.splice(toIndex, 0, movedItem)
+
+      const response = await fetch('/api/airtable/queue/reorder', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userEmail: email,
+          newOrder: newOrder.map(item => item.id)
+        }),
+      })
+
+      if (response.ok) {
+        setQueueItems(newOrder)
+      } else {
+        console.error('Failed to reorder queue items')
+      }
+    } catch (error) {
+      console.error('Error reordering queue items:', error)
+    } finally {
+      setIsReordering(false)
+    }
+  }
+
+  const handleDragStart = (e: React.DragEvent, id: string) => {
+    setDraggedItem(id)
+    e.dataTransfer.effectAllowed = 'move'
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+  }
+
+  const handleDrop = (e: React.DragEvent, targetId: string) => {
+    e.preventDefault()
+    if (!draggedItem || draggedItem === targetId) return
+
+    const draggedIndex = queueItems.findIndex(item => item.id === draggedItem)
+    const targetIndex = queueItems.findIndex(item => item.id === targetId)
+
+    if (draggedIndex !== -1 && targetIndex !== -1) {
+      moveQueueItem(draggedIndex, targetIndex)
+    }
+    setDraggedItem(null)
+  }
 
   const toggleImageSelection = (imageId: string) => {
     const newSelected = new Set(selectedImages)
@@ -134,6 +262,17 @@ export default function ImageBank() {
       return
     }
 
+    // Validate required fields
+    if (!publishDate) {
+      alert('Please select a publish date before moving images to queue.')
+      return
+    }
+
+    if (!publishTime) {
+      alert('Please select a publish time before moving images to queue.')
+      return
+    }
+
     setIsLoading(true)
     try {
       // Get image data from localStorage
@@ -153,7 +292,8 @@ export default function ImageBank() {
           body: JSON.stringify({
             email,
             recordId,
-            publishDate: publishDate || undefined,
+            publishDate,
+            publishTime,
             imageData,
             workspaceCode
           })
@@ -168,7 +308,9 @@ export default function ImageBank() {
 
       setSelectedImages(new Set())
       setPublishDate('')
+      setPublishTime('')
       fetchBankedImages()
+      fetchQueueItems() // Refresh queue to show newly added items
     } catch (error) {
       console.error('Error moving images to queue:', error)
     } finally {
@@ -262,8 +404,8 @@ export default function ImageBank() {
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: theme.colors.background }}>
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="min-h-screen flex" style={{ backgroundColor: theme.colors.background }}>
+      <main className="flex-1 px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2" style={{ color: theme.colors.text }}>
             Image Bank
@@ -310,16 +452,30 @@ export default function ImageBank() {
                   </button>
 
                   <input
-                    type="datetime-local"
+                    type="date"
                     value={publishDate}
                     onChange={(e) => setPublishDate(e.target.value)}
+                    placeholder="Publish Date *"
+                    required
                     className="px-3 py-2 rounded-lg border"
                     style={{
                       borderColor: theme.colors.border,
                       backgroundColor: theme.colors.background,
                       color: theme.colors.text
                     }}
-                    placeholder="Publish date (optional)"
+                  />
+
+                  <input
+                    type="time"
+                    value={publishTime}
+                    onChange={(e) => setPublishTime(e.target.value)}
+                    required
+                    className="px-3 py-2 rounded-lg border"
+                    style={{
+                      borderColor: theme.colors.border,
+                      backgroundColor: theme.colors.background,
+                      color: theme.colors.text
+                    }}
                   />
 
                   <button
@@ -461,6 +617,128 @@ export default function ImageBank() {
           </div>
         )}
       </main>
+
+      {/* Publishing Queue Sidebar */}
+      <div className="w-80 min-w-80 max-w-80 shadow-lg border-l transition-all duration-300 z-30 h-screen max-h-screen overflow-hidden" style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
+        <div className="h-full flex flex-col">
+          {/* Queue Header */}
+          <div className="p-3 border-b flex-shrink-0" style={{ borderColor: theme.colors.border, backgroundColor: theme.colors.secondary }}>
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold" style={{ color: theme.colors.text }}>
+                Publishing Queue ({queueItems.length})
+              </h3>
+              <button
+                onClick={fetchQueueItems}
+                disabled={isLoadingQueue}
+                className="p-1.5 rounded-md transition-all disabled:opacity-50 hover:bg-white hover:bg-opacity-20"
+                style={{ color: theme.colors.textSecondary }}
+                title="Refresh queue"
+              >
+                <svg className={`w-4 h-4 ${isLoadingQueue ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          {/* Queue Items */}
+          <div
+            ref={sidebarScrollRef}
+            className="flex-1 overflow-y-auto p-4 min-h-0"
+          >
+            {queueItems.length > 0 ? (
+              <div className="space-y-3">
+                {queueItems.map((item, index) => (
+                  <div
+                    key={item.id}
+                    draggable={!isReordering}
+                    onDragStart={(e) => handleDragStart(e, item.id)}
+                    onDragOver={handleDragOver}
+                    onDrop={(e) => handleDrop(e, item.id)}
+                    className={`bg-gray-50 rounded-lg p-3 border border-gray-200 hover:border-gray-300 transition-all cursor-move ${
+                      draggedItem === item.id ? 'opacity-50' : ''
+                    }`}
+                  >
+                    <div className="flex items-start space-x-3">
+                      {/* Queue Number */}
+                      <div className="w-7 h-7 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                        <span className="text-xs font-bold text-blue-600">#{index + 1}</span>
+                      </div>
+
+                      {/* Image thumbnail */}
+                      <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden border border-gray-200">
+                        <img
+                          src={item.imageUrl}
+                          alt={item.fileName || 'Image'}
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                          decoding="async"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement
+                            target.style.display = 'none'
+                          }}
+                        />
+                      </div>
+
+                      {/* File info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between mb-1">
+                          <p className="text-sm font-medium text-gray-900 truncate">{item.fileName || 'Unknown'}</p>
+                        </div>
+
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs px-2 py-1 rounded-full bg-blue-500 text-white">
+                              In Queue
+                            </span>
+                            <button
+                              onClick={() => deleteQueueItem(item.id)}
+                              className="p-1 text-red-400 hover:text-red-600 transition-colors"
+                              title="Remove from queue"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                          </div>
+
+                          <div className="text-xs text-gray-500">
+                            <div>Uploaded: {new Date(item.uploadDate).toLocaleDateString()}</div>
+                            {item.publishDate && (
+                              <div>Publish: {item.publishDate} {item.publishTime && `at ${item.publishTime}`}</div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Drag handle */}
+                      <div className="flex flex-col space-y-0.5 items-center">
+                        <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+                        <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+                        <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+                        <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+                        <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+                        <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-full text-center">
+                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                  <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">Publishing Queue</h3>
+                <p className="text-sm text-gray-500">Approved images will appear here</p>
+                <p className="text-xs text-gray-400 mt-2">Move images to queue to get started</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
 
       {/* Edit Image Details Modal */}
       {editingImageId && (

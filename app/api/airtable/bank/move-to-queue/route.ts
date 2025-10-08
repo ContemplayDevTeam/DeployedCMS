@@ -5,7 +5,7 @@ export async function POST(request: NextRequest) {
   console.log('📤 Move banked image to queue endpoint called')
 
   try {
-    const { email, recordId, publishDate, imageData, workspaceCode } = await request.json()
+    const { email, recordId, publishDate, publishTime, imageData, workspaceCode } = await request.json()
 
     if (!email || !recordId) {
       return NextResponse.json(
@@ -17,6 +17,20 @@ export async function POST(request: NextRequest) {
     if (!imageData) {
       return NextResponse.json(
         { error: 'Image data is required' },
+        { status: 400 }
+      )
+    }
+
+    if (!publishDate) {
+      return NextResponse.json(
+        { error: 'Publish date is required' },
+        { status: 400 }
+      )
+    }
+
+    if (!publishTime) {
+      return NextResponse.json(
+        { error: 'Publish time is required' },
         { status: 400 }
       )
     }
@@ -55,7 +69,8 @@ export async function POST(request: NextRequest) {
       name: imageData.fileName,
       size: imageData.fileSize,
       notes: imageData.notes,
-      publishDate: publishDate || new Date().toISOString().split('T')[0],
+      publishDate,
+      publishTime,
       metadata: imageData.metadata,
       tags: imageData.tags,
       owner: imageData.owner,

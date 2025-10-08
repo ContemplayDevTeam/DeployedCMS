@@ -105,7 +105,8 @@ export async function POST(request: NextRequest) {
           name: 'Uploaded Image', // Default name since it's not in the payload
           size: 0, // Default size since it's not in the payload
           notes: 'Uploaded via web interface',
-          publishDate: item['Publish Date'],
+          publishDate: item['Publish Date'] || new Date().toISOString().split('T')[0],
+          publishTime: item['Publish Time'] || '12:00',
           metadata: {},
           experienceType: experienceType
         })

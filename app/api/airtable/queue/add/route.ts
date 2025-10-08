@@ -61,8 +61,8 @@ export async function POST(request: NextRequest) {
       name: imageData.name,
       size: imageData.size,
       notes: imageData.notes,
-      publishDate: imageData.publishDate,
-      publishTime: imageData.publishTime,
+      publishDate: imageData.publishDate || new Date().toISOString().split('T')[0],
+      publishTime: imageData.publishTime || '12:00',
       metadata: imageData.metadata,
       tags: imageData.tags,
     })

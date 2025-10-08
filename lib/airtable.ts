@@ -267,20 +267,17 @@ export class AirtableBackend {
     name: string
     size: number
     notes?: string
-    publishDate?: string
-    publishTime?: string
+    publishDate: string
+    publishTime: string
     metadata?: Record<string, unknown>
     tags?: string[]
     owner?: string
     experienceType?: string
   }): Promise<QueueItem> {
     console.log('📤 Starting image queue process...')
-    
+
     try {
       console.log('📤 Starting image queue process for user:', userEmail)
-
-      // Prepare the payload with all required fields
-      const publishDate = imageData.publishDate || new Date().toISOString().split('T')[0]
 
       const fields: Record<string, unknown> = {
         'User Email': userEmail,
@@ -288,13 +285,11 @@ export class AirtableBackend {
         'File Name': imageData.name,
         'File Size': imageData.size,
         'Upload Date': new Date().toISOString().split('T')[0],
-        'Publish Date': publishDate
+        'Publish Date': imageData.publishDate,
+        'Publish Time': imageData.publishTime
       }
 
       // Add optional fields if provided
-      if (imageData.publishTime) {
-        fields['Publish Time'] = imageData.publishTime
-      }
       if (imageData.notes) {
         fields['Notes'] = imageData.notes
       }
