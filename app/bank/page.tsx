@@ -55,6 +55,9 @@ export default function ImageBank() {
     publishDate: ''
   })
 
+  // Error state for missing date/time
+  const [dateTimeError, setDateTimeError] = useState('')
+
   const fetchBankedImages = useCallback(async () => {
     const email = localStorage.getItem('uploader_email')
     if (!email) {
@@ -258,20 +261,20 @@ export default function ImageBank() {
     )
 
     if (unapprovedImages.length > 0) {
-      alert('All images must be approved before moving to queue. Please approve them first.')
+      setDateTimeError('All images must be approved before moving to queue.')
+      setTimeout(() => setDateTimeError(''), 5000)
       return
     }
 
     // Validate required fields
-    if (!publishDate) {
-      alert('Please select a publish date before moving images to queue.')
+    if (!publishDate || !publishTime) {
+      setDateTimeError('Please select both publish date and time before moving images to queue.')
+      setTimeout(() => setDateTimeError(''), 5000)
       return
     }
 
-    if (!publishTime) {
-      alert('Please select a publish time before moving images to queue.')
-      return
-    }
+    // Clear any existing errors
+    setDateTimeError('')
 
     setIsLoading(true)
     try {
@@ -478,13 +481,19 @@ export default function ImageBank() {
                     }}
                   />
 
+                  {dateTimeError && (
+                    <div className="col-span-full p-3 rounded-lg border-2 border-red-500 bg-red-50 text-red-700 font-medium text-sm">
+                      {dateTimeError}
+                    </div>
+                  )}
+
                   <button
                     onClick={moveToQueue}
-                    disabled={isLoading}
-                    className="px-6 py-2 rounded-lg font-medium transition-all disabled:opacity-50"
+                    disabled={isLoading || selectedImages.size === 0 || !publishDate || !publishTime || bankedImages.filter(img => selectedImages.has(img.id) && !img.approved).length > 0}
+                    className="px-6 py-2 rounded-lg font-medium transition-all disabled:cursor-not-allowed"
                     style={{
-                      backgroundColor: theme.colors.accent,
-                      color: theme.colors.background
+                      backgroundColor: (isLoading || selectedImages.size === 0 || !publishDate || !publishTime || bankedImages.filter(img => selectedImages.has(img.id) && !img.approved).length > 0) ? '#808080' : '#dc2626',
+                      color: '#ffffff'
                     }}
                   >
                     Move to Queue

@@ -57,6 +57,9 @@ export default function Login() {
       localStorage.setItem('uploader_action', 'login')
       localStorage.setItem('uploader_timestamp', new Date().toISOString())
 
+      // Dispatch custom event to notify Header component
+      window.dispatchEvent(new Event('emailSaved'))
+
       // Set theme based on email
       setEmailTheme(formData.email)
 
