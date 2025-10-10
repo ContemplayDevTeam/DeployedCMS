@@ -835,8 +835,13 @@ export default function Home() {
 
               <div className="flex space-x-3">
                 <button
-                  onClick={async () => {
+                  onClick={async (e) => {
+                    e.preventDefault()
                     if (!inviteEmail) return
+
+                    // Disable button to prevent multiple clicks
+                    const button = e.currentTarget
+                    button.disabled = true
 
                     try {
                       const response = await fetch('/api/invite', {
@@ -853,7 +858,9 @@ export default function Home() {
                       const data = await response.json()
 
                       if (response.ok) {
-                        setInviteMessage('✓ Email invitation will be sent! (Email service not configured yet - invite link logged to console)')
+                        setInviteMessage(data.emailSent
+                          ? '✓ Invitation email sent successfully!'
+                          : '✓ Invitation created (check console for link)')
                         console.log('📧 INVITE LINK:', data.inviteLink)
                         setTimeout(() => {
                           setShowShareModal(false)
@@ -862,10 +869,12 @@ export default function Home() {
                         }, 3000)
                       } else {
                         setInviteMessage('Error: ' + (data.error || 'Failed to send invite'))
+                        button.disabled = false
                       }
                     } catch (error) {
                       console.error('Invite error:', error)
                       setInviteMessage('Error sending invite. Please try again.')
+                      button.disabled = false
                     }
                   }}
                   disabled={!inviteEmail}

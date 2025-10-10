@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useTheme } from '@/components/ThemeProvider'
 
 interface UserStats {
   email: string
@@ -27,6 +28,7 @@ interface QueueStats {
 }
 
 export default function Dashboard() {
+  const { theme } = useTheme()
   const [userStats, setUserStats] = useState<UserStats | null>(null)
   const [queueStats, setQueueStats] = useState<QueueStats>({
     total: 0,
@@ -41,6 +43,11 @@ export default function Dashboard() {
   const [error, setError] = useState<string>('')
   const [storedEmail, setStoredEmail] = useState<string>('')
 
+  // Share modal state
+  const [showShareModal, setShowShareModal] = useState(false)
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [inviteMessage, setInviteMessage] = useState('')
+
   useEffect(() => {
     const email = localStorage.getItem('uploader_email')
     if (email) {
@@ -49,6 +56,14 @@ export default function Dashboard() {
     } else {
       setError('Please login first')
       setIsLoading(false)
+    }
+
+    // Listen for share modal event from Header
+    const handleOpenShareModal = () => setShowShareModal(true)
+    window.addEventListener('openShareModal', handleOpenShareModal)
+
+    return () => {
+      window.removeEventListener('openShareModal', handleOpenShareModal)
     }
   }, [])
 
@@ -319,6 +334,114 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* Share Workspace Modal */}
+      {showShareModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="max-w-md w-full rounded-2xl p-6 shadow-2xl" style={{ backgroundColor: theme.colors.background }}>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold" style={{ color: theme.colors.text }}>Share Workspace</h3>
+              <button
+                onClick={() => setShowShareModal(false)}
+                className="p-2 rounded-lg transition-colors"
+                style={{ color: theme.colors.text }}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <p className="text-sm mb-4" style={{ color: theme.colors.textSecondary }}>
+              Send an invitation email with a magic link. When they click it, they&apos;ll be automatically logged in with access to your workspace theme - no password needed!
+            </p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: theme.colors.text }}>
+                  Email Address
+                </label>
+                <input
+                  type="email"
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                  placeholder="colleague@example.com"
+                  className="w-full px-4 py-3 rounded-lg border-2 focus:outline-none focus:ring-2"
+                  style={{ borderColor: theme.colors.border, backgroundColor: theme.colors.surface, color: theme.colors.text }}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: theme.colors.text }}>
+                  Message (Optional)
+                </label>
+                <textarea
+                  value={inviteMessage}
+                  onChange={(e) => setInviteMessage(e.target.value)}
+                  placeholder="Join our workspace to collaborate..."
+                  rows={3}
+                  className="w-full px-4 py-3 rounded-lg border-2 focus:outline-none focus:ring-2 resize-none"
+                  style={{ borderColor: theme.colors.border, backgroundColor: theme.colors.surface, color: theme.colors.text }}
+                />
+              </div>
+
+              <div className="flex space-x-3">
+                <button
+                  onClick={async () => {
+                    if (!inviteEmail) return
+
+                    try {
+                      const response = await fetch('/api/invite', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          email: inviteEmail,
+                          message: inviteMessage,
+                          workspaceCode: localStorage.getItem('theme_password'),
+                          senderEmail: storedEmail
+                        })
+                      })
+
+                      const data = await response.json()
+
+                      if (response.ok) {
+                        setInviteMessage('✓ Email invitation will be sent! (Email service not configured yet - invite link logged to console)')
+                        console.log('📧 INVITE LINK:', data.inviteLink)
+                        setTimeout(() => {
+                          setShowShareModal(false)
+                          setInviteEmail('')
+                          setInviteMessage('')
+                        }, 3000)
+                      } else {
+                        setInviteMessage('Error: ' + (data.error || 'Failed to send invite'))
+                      }
+                    } catch (error) {
+                      console.error('Invite error:', error)
+                      setInviteMessage('Error sending invite. Please try again.')
+                    }
+                  }}
+                  disabled={!inviteEmail}
+                  className="flex-1 px-4 py-3 rounded-lg font-medium transition-colors disabled:opacity-50"
+                  style={{ backgroundColor: theme.colors.accent, color: theme.colors.background }}
+                >
+                  Send Invitation Email
+                </button>
+                <button
+                  onClick={() => {
+                    setShowShareModal(false)
+                    setInviteEmail('')
+                    setInviteMessage('')
+                  }}
+                  className="px-4 py-3 rounded-lg font-medium transition-colors"
+                  style={{ backgroundColor: theme.colors.surface, color: theme.colors.text }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

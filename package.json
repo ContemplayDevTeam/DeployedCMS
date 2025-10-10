@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@getbrevo/brevo": "^3.0.1",
     "@headlessui/react": "^2.2.9",
     "@heroicons/react": "^2.2.0",
     "@types/bcryptjs": "^2.4.6",
@@ -24,6 +25,7 @@
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-dropzone": "^14.3.8",
+    "resend": "^6.1.2",
     "sharp": "^0.34.4"
   },
   "devDependencies": {

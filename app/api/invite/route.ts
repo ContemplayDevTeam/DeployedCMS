@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import * as brevo from '@getbrevo/brevo'
 
 export async function POST(request: NextRequest) {
   try {
@@ -75,23 +76,88 @@ Sent from the Workspace Platform
     console.log('📨 Email would be sent:', inviteData)
     console.log('🔗 COPY THIS INVITE LINK:', inviteLink)
 
-    // INTEGRATION EXAMPLE:
-    // Uncomment and configure one of these email services:
+    // Send email via Brevo if API key is configured
+    const brevoApiKey = process.env.BREVO_API_KEY
+    const brevoSenderEmail = process.env.BREVO_SENDER_EMAIL
+    const brevoSenderName = process.env.BREVO_SENDER_NAME || 'Workspace Team'
 
-    // SendGrid:
-    // await sendgrid.send({ to: email, from: 'noreply@yourdomain.com', subject: inviteData.subject, text: inviteData.body })
+    if (brevoApiKey && brevoSenderEmail) {
+      try {
+        const apiInstance = new brevo.TransactionalEmailsApi()
+        apiInstance.setApiKey(brevo.TransactionalEmailsApiApiKeys.apiKey, brevoApiKey)
 
-    // Resend:
-    // await resend.emails.send({ from: 'noreply@yourdomain.com', to: email, subject: inviteData.subject, text: inviteData.body })
+        const sendSmtpEmail = new brevo.SendSmtpEmail()
+        sendSmtpEmail.subject = inviteData.subject
+        // MUST use verified sender email from Brevo account
+        sendSmtpEmail.sender = { name: brevoSenderName, email: brevoSenderEmail }
+        // Use replyTo to show who sent the invite (optional)
+        if (senderEmail) {
+          sendSmtpEmail.replyTo = { email: senderEmail }
+        }
+        sendSmtpEmail.to = [{ email: email }]
+        sendSmtpEmail.htmlContent = `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2>You've been invited to join a workspace!</h2>
+            <p>${senderEmail ? `<strong>${senderEmail}</strong> has invited you` : 'You\'ve been invited'} to join their workspace!</p>
+            ${message ? `<p><em>"${message}"</em></p>` : ''}
+            <div style="margin: 30px 0;">
+              <a href="${inviteLink}"
+                 style="background-color: #4F46E5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+                Accept Invitation
+              </a>
+            </div>
+            <p>When you click this link, you'll be:</p>
+            <ul>
+              <li>✓ Automatically logged in</li>
+              <li>✓ Given access to the workspace theme</li>
+              <li>✓ Ready to start collaborating immediately</li>
+            </ul>
+            <p style="color: #666; font-size: 12px;">This link expires in 30 days.</p>
+            <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
+            <p style="color: #999; font-size: 11px;">Sent from the Workspace Platform</p>
+          </div>
+        `
+        sendSmtpEmail.textContent = inviteData.body
 
-    // Nodemailer:
-    // await transporter.sendMail({ from: senderEmail, to: email, subject: inviteData.subject, text: inviteData.body })
+        const emailResult = await apiInstance.sendTransacEmail(sendSmtpEmail)
+        console.log('✅ Email sent successfully via Brevo:', emailResult)
+
+        return NextResponse.json({
+          success: true,
+          message: 'Invitation email sent successfully!',
+          inviteLink: inviteLink,
+          emailSent: true
+        })
+      } catch (emailError: any) {
+        console.error('❌ Failed to send email via Brevo:', emailError)
+        console.error('❌ Error details:', emailError?.response?.body || emailError?.message || emailError)
+
+        // Return error details to help diagnose the issue
+        return NextResponse.json({
+          success: false,
+          error: `Failed to send email: ${emailError?.response?.body?.message || emailError?.message || 'Unknown error'}`,
+          details: emailError?.response?.body || null,
+          inviteLink: inviteLink,
+          emailSent: false
+        }, { status: 500 })
+      }
+    } else {
+      if (!brevoApiKey) {
+        console.log('⚠️ BREVO_API_KEY not configured - email not sent')
+        console.log('💡 Add BREVO_API_KEY to .env.local to enable email sending')
+      }
+      if (!brevoSenderEmail) {
+        console.log('⚠️ BREVO_SENDER_EMAIL not configured - email not sent')
+        console.log('💡 Add a verified sender email to .env.local')
+        console.log('💡 Verify your sender at: https://app.brevo.com/settings/senders')
+      }
+    }
 
     return NextResponse.json({
       success: true,
-      message: 'Invitation sent successfully',
+      message: (brevoApiKey && brevoSenderEmail) ? 'Invitation email sent successfully' : 'Invitation created (email service not configured - check console for invite link)',
       inviteLink: inviteLink,
-      details: inviteData
+      emailSent: !!(brevoApiKey && brevoSenderEmail)
     })
 
   } catch (error: unknown) {
