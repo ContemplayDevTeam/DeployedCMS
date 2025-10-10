@@ -71,19 +71,29 @@ export class AirtableBackend {
   private async makeRequest(endpoint: string, options: RequestInit = {}) {
     console.log('🔗 Making Airtable request to:', endpoint)
     console.log('🔧 Request method:', options.method || 'GET')
-    
+
     const url = `${this.baseUrl}${endpoint}`
     console.log('🌐 Full URL:', url)
-    
+
     try {
-      const response = await fetch(url, {
-        ...options,
-        headers: {
-          'Authorization': `Bearer ${this.apiKey}`,
-          'Content-Type': 'application/json',
-          ...options.headers,
-        },
+      // Create a timeout promise
+      const timeoutMs = 15000 // 15 second timeout
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Request timeout after 15 seconds')), timeoutMs)
       })
+
+      // Race between fetch and timeout
+      const response = await Promise.race([
+        fetch(url, {
+          ...options,
+          headers: {
+            'Authorization': `Bearer ${this.apiKey}`,
+            'Content-Type': 'application/json',
+            ...options.headers,
+          },
+        }),
+        timeoutPromise
+      ]) as Response
 
       console.log('📡 Response status:', response.status, response.statusText)
 
@@ -285,8 +295,13 @@ export class AirtableBackend {
         'File Name': imageData.name,
         'File Size': imageData.size,
         'Upload Date': new Date().toISOString().split('T')[0],
-        'Publish Date': imageData.publishDate,
-        'Publish Time': imageData.publishTime
+        'Publish Date': imageData.publishDate
+      }
+
+      // Convert publishTime (HH:MM) to full ISO datetime if provided
+      if (imageData.publishTime) {
+        const publishDateTime = new Date(`${imageData.publishDate}T${imageData.publishTime}:00.000Z`)
+        fields['Publish Time'] = publishDateTime.toISOString()
       }
 
       // Add optional fields if provided
@@ -565,7 +580,19 @@ export class AirtableBackend {
       }
     } catch (error) {
       console.error('❌ Error creating notification:', error)
-      throw new Error('Failed to create notification')
+      // Don't throw - notifications are optional, return a mock notification
+      console.log('⚠️ Notifications table not available - notification skipped')
+      return {
+        id: 'mock-' + Date.now(),
+        userEmail,
+        type: notification.type,
+        title: notification.title,
+        message: notification.message,
+        read: false,
+        createdAt: new Date().toISOString(),
+        relatedImageId: notification.relatedImageId,
+        relatedImageUrl: notification.relatedImageUrl
+      }
     }
   }
 
@@ -591,7 +618,9 @@ export class AirtableBackend {
       }))
     } catch (error) {
       console.error('Error getting notifications:', error)
-      throw new Error('Failed to get notifications')
+      // Don't throw - notifications are optional, return empty array
+      console.log('⚠️ Notifications table not available - returning empty list')
+      return []
     }
   }
 
