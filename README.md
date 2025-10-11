@@ -152,8 +152,8 @@ AirTableQueueforCustomers/
 
 1. **Clone the repository**
 ```bash
-git clone https://github.com/bvryn7/AirTableQueueforCustomers.git
-cd AirTableQueueforCustomers
+git clone https://github.com/ContemplayDevTeam/DeployedCMS.git
+cd DeployedCMS
 ```
 
 2. **Install dependencies**
@@ -363,8 +363,8 @@ If you're setting up a new terminal/Claude instance:
 
 ```bash
 # 1. Clone the repo
-git clone https://github.com/bvryn7/AirTableQueueforCustomers.git
-cd AirTableQueueforCustomers
+git clone https://github.com/ContemplayDevTeam/DeployedCMS.git
+cd DeployedCMS
 
 # 2. Install dependencies
 npm install
