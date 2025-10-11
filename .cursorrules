@@ -1,6 +1,8 @@
 # Git Commit Rules
 
-- never mention claude or ai in commits
+- NEVER mention claude, ai, or any assistant in commits
 - keep messages casual and sloppy like typed fast
-- no emojis or fancy formatting
-- just describe what changed briefly
+- ABSOLUTELY NO EMOJIS EVER in commit messages
+- no fancy formatting, markdown, or special characters
+- just describe what changed briefly in plain text
+- lowercase preferred, quick and dirty

@@ -128,15 +128,16 @@ Sent from the Workspace Platform
           inviteLink: inviteLink,
           emailSent: true
         })
-      } catch (emailError: any) {
+      } catch (emailError: unknown) {
         console.error('❌ Failed to send email via Brevo:', emailError)
-        console.error('❌ Error details:', emailError?.response?.body || emailError?.message || emailError)
+        const error = emailError as { response?: { body?: { message?: string } }; message?: string }
+        console.error('❌ Error details:', error?.response?.body || error?.message || emailError)
 
         // Return error details to help diagnose the issue
         return NextResponse.json({
           success: false,
-          error: `Failed to send email: ${emailError?.response?.body?.message || emailError?.message || 'Unknown error'}`,
-          details: emailError?.response?.body || null,
+          error: `Failed to send email: ${error?.response?.body?.message || error?.message || 'Unknown error'}`,
+          details: error?.response?.body || null,
           inviteLink: inviteLink,
           emailSent: false
         }, { status: 500 })

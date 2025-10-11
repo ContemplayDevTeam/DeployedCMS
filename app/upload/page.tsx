@@ -35,10 +35,10 @@ export default function Home() {
   const mainRef = useRef<HTMLDivElement>(null)
 
   // Enhanced fields state
-  const [defaultNotes, setDefaultNotes] = useState<string>('')
-  const [defaultPublishDate, setDefaultPublishDate] = useState<string>(new Date().toISOString().split('T')[0])
-  const [defaultOwner, setDefaultOwner] = useState<string>('')
-  const [defaultFileName, setDefaultFileName] = useState<string>('')
+  const [defaultNotes] = useState<string>('')
+  const [defaultPublishDate] = useState<string>(new Date().toISOString().split('T')[0])
+  const [defaultOwner] = useState<string>('')
+  const [defaultFileName] = useState<string>('')
 
   // Share modal state
   const [showShareModal, setShowShareModal] = useState(false)
