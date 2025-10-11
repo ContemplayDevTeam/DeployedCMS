@@ -57,13 +57,6 @@ export function Header() {
               {/* Center navigation - Desktop only */}
               <div className="hidden lg:flex lg:flex-1 lg:justify-center lg:items-center lg:space-x-4 xl:space-x-8">
                 <Link
-                  href="/upload"
-                  className="inline-flex items-center px-2 xl:px-3 py-1 text-sm font-medium transition-colors hover:opacity-80 whitespace-nowrap"
-                  style={{ color: theme.colors.text }}
-                >
-                  Upload
-                </Link>
-                <Link
                   href="/dashboard"
                   className="inline-flex items-center px-2 xl:px-3 py-1 text-sm font-medium transition-colors hover:opacity-80 whitespace-nowrap"
                   style={{ color: theme.colors.text }}
@@ -71,18 +64,18 @@ export function Header() {
                   Dashboard
                 </Link>
                 <Link
+                  href="/upload"
+                  className="inline-flex items-center px-2 xl:px-3 py-1 text-sm font-medium transition-colors hover:opacity-80 whitespace-nowrap"
+                  style={{ color: theme.colors.text }}
+                >
+                  Upload
+                </Link>
+                <Link
                   href="/bank"
                   className="inline-flex items-center px-2 xl:px-3 py-1 text-sm font-medium transition-colors hover:opacity-80 whitespace-nowrap"
                   style={{ color: theme.colors.text }}
                 >
                   Image Bank
-                </Link>
-                <Link
-                  href="/landing"
-                  className="inline-flex items-center px-2 xl:px-3 py-1 text-sm font-medium transition-colors hover:opacity-80 whitespace-nowrap"
-                  style={{ color: theme.colors.text }}
-                >
-                  Features
                 </Link>
                 <button
                   onClick={() => {
@@ -139,14 +132,6 @@ export function Header() {
             <div className="space-y-1 pb-3 pt-2" style={{ backgroundColor: theme.colors.surface }}>
               <Disclosure.Button
                 as={Link}
-                href="/upload"
-                className="block py-2 pl-3 pr-4 text-base font-medium transition-colors hover:opacity-80"
-                style={{ color: '#42504d' }}
-              >
-                Upload
-              </Disclosure.Button>
-              <Disclosure.Button
-                as={Link}
                 href="/dashboard"
                 className="block py-2 pl-3 pr-4 text-base font-medium transition-colors hover:opacity-80"
                 style={{ color: '#42504d' }}
@@ -155,19 +140,19 @@ export function Header() {
               </Disclosure.Button>
               <Disclosure.Button
                 as={Link}
+                href="/upload"
+                className="block py-2 pl-3 pr-4 text-base font-medium transition-colors hover:opacity-80"
+                style={{ color: '#42504d' }}
+              >
+                Upload
+              </Disclosure.Button>
+              <Disclosure.Button
+                as={Link}
                 href="/bank"
                 className="block py-2 pl-3 pr-4 text-base font-medium transition-colors hover:opacity-80"
                 style={{ color: '#42504d' }}
               >
                 Image Bank
-              </Disclosure.Button>
-              <Disclosure.Button
-                as={Link}
-                href="/landing"
-                className="block py-2 pl-3 pr-4 text-base font-medium transition-colors hover:opacity-80"
-                style={{ color: '#42504d' }}
-              >
-                Features
               </Disclosure.Button>
               <Disclosure.Button
                 as="button"

@@ -75,7 +75,7 @@ export const themes: Record<string, Theme> = {
     colors: {
       primary: '#e8d0a9',      // Warm cream
       secondary: '#5e8770',    // Forest green
-      accent: '#e9c2b3',       // Soft peach
+      accent: '#8B2635',       // Burgundy for buttons
       background: '#fefcfa',   // Off-white background
       surface: '#f5f1eb',      // Light cream surface
       text: '#3a4a3e',         // Dark forest green
