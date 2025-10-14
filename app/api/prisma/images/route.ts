@@ -16,9 +16,20 @@ export async function POST(request: NextRequest) {
 
     // Query Image table from Prisma filtered by experience type
     // Join with Conversation to get user/owner info
+    // Filter out conversations with 'assistant' in experienceType
     const conversations = await prisma.conversation.findMany({
       where: {
-        experienceType: experienceType
+        AND: [
+          { experienceType: experienceType },
+          {
+            NOT: {
+              experienceType: {
+                contains: 'assistant',
+                mode: 'insensitive'
+              }
+            }
+          }
+        ]
       },
       include: {
         user: true,
