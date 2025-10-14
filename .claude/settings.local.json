@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(vercel env rm:*)",
+      "Bash(mkdir:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

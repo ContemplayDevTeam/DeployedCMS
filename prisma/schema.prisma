@@ -1,0 +1,177 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            Int            @id @default(autoincrement())
+  firebaseUid   String         @unique
+  email         String?        @unique
+  phone         String?
+  name          String?
+  profileImage  String?
+  displayName   String?
+  createdAt     DateTime       @default(now())
+  lastLoginAt   DateTime       @updatedAt
+  preferences   Json?
+  conversations Conversation[]
+  bookmarks     ContemplaytionBookmark[]
+  sharedSessions SharedSession[]
+  longestStreak Int @default(0)
+  acceptedTerms Boolean @default(false)
+  acceptedTermsAt DateTime?
+
+  @@index([firebaseUid])
+}
+
+model Conversation {
+  threadId          String    @unique
+  createdAt         DateTime  @default(now())
+  openAIAssistantId String?
+  assistantId       Int?
+  imageName         String
+  experienceType    String
+  id                Int       @id @default(autoincrement())
+  userId            Int?
+  user              User?     @relation(fields: [userId], references: [id])
+  messages          Message[]
+  contemplaytionIds Int[]
+  bookmarks         ContemplaytionBookmark[]
+  experienceTypeAirtableId String?
+
+  imageAirtableId   String?
+  image             Image?    @relation("ImageConversations", fields: [imageAirtableId], references: [airtableId], onDelete: SetNull, onUpdate: NoAction)
+
+  sharedSessionId   String?
+  sharedSession     SharedSession? @relation(fields: [sharedSessionId], references: [id])
+  timeZone          String @default("America/New_York")
+}
+
+model Message {
+  sender          String
+  message         String
+  createdAt       DateTime     @default(now())
+  id              Int          @id @default(autoincrement())
+  threadId        String
+  assistantNumber Int?
+  assistantType   String?
+  score           Int?
+  username        String?
+  questionId      Int?
+  assistantId     Int?
+  airtableId      String? @unique
+  imageAirtableId      String?
+  substitutionGroupAirtableId String?
+  conversation    Conversation @relation(fields: [threadId], references: [threadId], onDelete: Cascade)
+
+  @@index([threadId])
+  @@index([score])
+  @@index([imageAirtableId])
+  @@index([assistantNumber, assistantType, score])
+}
+
+model ContemplaytionBookmark {
+  id                Int          @id @default(autoincrement())
+  userId            Int
+  conversationId    Int
+  contemplaytionId  Int
+  createdAt         DateTime     @default(now())
+
+  user              User @relation(fields: [userId], references: [id])
+  conversation      Conversation @relation(fields: [conversationId], references: [id])
+
+  @@index([userId])
+  @@index([contemplaytionId])
+}
+
+model ExperienceType {
+  id                 Int      @id @default(autoincrement())
+  airtableId         String   @unique
+  type               String   @unique
+  embedKey           String?  @unique
+  firstMessage       String
+  prompt             String
+  model              String   @default("gpt-4o")
+  temperature        Float    @default(1)
+  topP               Float    @default(1)
+  openAIAssistantId  String?
+  isDeleted          Boolean  @default(false)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime
+
+  images             Image[]
+  substitutions      Substitutions[]
+}
+
+model Image {
+  id                        Int    @id @default(autoincrement())
+  airtableId                String @unique
+  oldAssistantId            Int?
+  sortOrder                 Int
+  type                      String
+  imageName                 String
+  imageInfo                 String
+  imageUrl                  String
+  homeBlurbText             String?
+  homeBlurbName             String?
+  infoLink                  String?
+  isLive                    Boolean @default(false)
+
+  experienceTypeAirtableId  String?
+  experienceType            ExperienceType? @relation(fields: [experienceTypeAirtableId], references: [airtableId])
+
+  substitutions             Substitutions[]
+  conversations Conversation[] @relation("ImageConversations")
+
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime
+
+  @@index([type, sortOrder])
+}
+
+model Substitutions {
+  id                         Int      @id @default(autoincrement())
+  airtableId                 String
+  type                       String
+  replacement                String
+  replacementToken           String
+  groupAirtableId            String?
+  shouldRotate               Boolean?
+
+  experienceTypeAirtableId   String?
+  experienceType             ExperienceType? @relation(fields: [experienceTypeAirtableId], references: [airtableId])
+
+  imageAirtableId            String?
+  image                      Image? @relation(fields: [imageAirtableId], references: [airtableId])
+
+  createdAt                  DateTime @default(now())
+  updatedAt                  DateTime
+
+  @@unique([airtableId, experienceTypeAirtableId])
+  @@index([experienceTypeAirtableId])
+  @@index([imageAirtableId, replacementToken])
+}
+
+model SharedSession {
+  id             String         @id @default(cuid())
+  creatorId      Int
+  creator        User @relation(fields: [creatorId], references: [id])
+  assistantId    Int?
+  imageAirtableId  String?
+  questionSetId  String?
+  createdAt      DateTime       @default(now())
+  isActive       Boolean        @default(true)
+  conversations  Conversation[]
+}
+
+model Feedback {
+  id        Int      @id @default(autoincrement())
+  text      String
+  createdAt DateTime @default(now())
+  username  String?
+  metadata  Json?
+}
