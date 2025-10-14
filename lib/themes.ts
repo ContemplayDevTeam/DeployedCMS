@@ -156,3 +156,15 @@ export function applyTheme(theme: Theme) {
   root.style.setProperty('--color-warning', theme.colors.warning)
   root.style.setProperty('--color-error', theme.colors.error)
 }
+
+// Map themes to experience types for filtering dashboard content
+// This maps UI themes to Prisma database experienceType values
+export function getExperienceTypeFromTheme(themeName: string): string {
+  const themeToExperience: Record<string, string> = {
+    'homegrownnationalpark': 'art', // HNP maps to 'art' experience type in Prisma
+    'default': 'design v4', // Default maps to latest design version
+    // Add more mappings as you add more themes
+  }
+
+  return themeToExperience[themeName.toLowerCase()] || 'design v4'
+}

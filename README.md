@@ -2,6 +2,11 @@
 
 A modern, full-stack image upload and queue management system built with Next.js, featuring Airtable backend integration, Cloudinary image processing, and beautiful Framer Motion animations.
 
+## 🔐 Deployment Account
+**Vercel Account:** ContemplayDevTeam
+**GitHub Repo:** https://github.com/ContemplayDevTeam/DeployedCMS
+**Vercel CLI:** Must be logged in as ContemplayDevTeam account to manage environment variables and deployments
+
 ## 🚀 Features
 
 ### Core Functionality

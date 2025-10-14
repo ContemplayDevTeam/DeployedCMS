@@ -6,6 +6,7 @@ import { useDropzone } from 'react-dropzone'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { useTheme } from '../../components/ThemeProvider'
+import { getExperienceTypeFromTheme } from '../../lib/themes'
 
 
 interface QueueItem {
@@ -37,7 +38,7 @@ export default function Home() {
   // Enhanced fields state
   const [defaultNotes] = useState<string>('')
   const [defaultPublishDate] = useState<string>(new Date().toISOString().split('T')[0])
-  const [defaultOwner] = useState<string>('')
+  const [defaultOwner, setDefaultOwner] = useState<string>('')
   const [defaultFileName] = useState<string>('')
 
   // Share modal state
@@ -63,6 +64,8 @@ export default function Home() {
     if (saved) {
       setStoredEmail(saved)
       setEmail(saved) // Pre-fill the email input
+      // Set default owner to the user's email (can be changed later)
+      setDefaultOwner(saved)
     }
 
     // Ensure page starts at top on load
@@ -310,6 +313,9 @@ export default function Home() {
             ? `${defaultFileName}_${item.file.name}`
             : item.file.name
 
+          // Get experience type from current theme
+          const experienceType = getExperienceTypeFromTheme(theme.name)
+
           // All uploads now go to bank
           const endpoint = '/api/airtable/bank/add'
 
@@ -324,10 +330,12 @@ export default function Home() {
                 size: item.file.size,
                 notes: item.notes,
                 publishDate: item.publishDate,
-                owner: item.owner,
+                owner: item.owner || storedEmail, // Use owner or fallback to email
+                experienceType: experienceType, // Add experience type
                 metadata: {
                   ...item.metadata,
-                  processedAt: new Date().toISOString()
+                  processedAt: new Date().toISOString(),
+                  theme: theme.name
                 }
               }
             })

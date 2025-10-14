@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useTheme } from '@/components/ThemeProvider'
+import { getExperienceTypeFromTheme } from '@/lib/themes'
 
 interface UserStats {
   email: string
@@ -27,6 +28,26 @@ interface QueueStats {
   avgProcessingTime: number
 }
 
+interface RecentImage {
+  id: string
+  imageUrl: string
+  fileName: string
+  uploadDate: string
+  status?: string
+  approved?: boolean
+  owner?: string
+  experienceType?: string
+}
+
+interface ActivityEvent {
+  id: string
+  type: 'upload' | 'approval' | 'queue' | 'publish' | 'system'
+  message: string
+  timestamp: string
+  imageUrl?: string
+  owner?: string
+}
+
 export default function Dashboard() {
   const { theme } = useTheme()
   const [userStats, setUserStats] = useState<UserStats | null>(null)
@@ -42,6 +63,9 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string>('')
   const [storedEmail, setStoredEmail] = useState<string>('')
+  const [recentImages, setRecentImages] = useState<RecentImage[]>([])
+  const [activityEvents, setActivityEvents] = useState<ActivityEvent[]>([])
+  const [selectedOwner, setSelectedOwner] = useState<string | null>(null)
 
   // Share modal state
   const [showShareModal, setShowShareModal] = useState(false)
@@ -113,6 +137,39 @@ export default function Dashboard() {
 
         setQueueStats(stats)
       }
+
+      // Load images from Prisma database (filtered by experience type)
+      const currentExperienceType = getExperienceTypeFromTheme(theme.name)
+
+      const imagesResponse = await fetch('/api/prisma/images', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email,
+          experienceType: currentExperienceType
+        })
+      })
+
+      if (imagesResponse.ok) {
+        const imagesData = await imagesResponse.json()
+        const images = imagesData.images || []
+
+        // Set recent images for left card
+        setRecentImages(images.slice(0, 20))
+
+        // Generate activity timeline from images for right card
+        const events: ActivityEvent[] = images.slice(0, 50).map((item: RecentImage, index: number) => ({
+          id: `event-${index}`,
+          type: item.approved ? 'approval' : 'upload',
+          message: item.approved
+            ? `Approved "${item.fileName}" for publishing`
+            : `Uploaded "${item.fileName}"`,
+          timestamp: item.uploadDate,
+          imageUrl: item.imageUrl,
+          owner: item.owner
+        }))
+        setActivityEvents(events)
+      }
     } catch (error) {
       console.error('Error loading dashboard data:', error)
       setError('Failed to load dashboard data')
@@ -168,18 +225,10 @@ export default function Dashboard() {
     <div className="min-h-screen" style={{ backgroundColor: '#4A5555' }}>
       {/* Header */}
       <div className="border-b border-gray-600 p-6">
-        <div className="max-w-7xl mx-auto flex justify-between items-center">
+        <div className="max-w-7xl mx-auto">
           <div>
             <h1 className="text-3xl font-bold text-white">Dashboard</h1>
             <p className="text-gray-300 mt-1">Welcome back, {userStats?.email}</p>
-          </div>
-          <div className="flex space-x-4">
-            <Link
-              href="/upload"
-              className="px-4 py-2 bg-white text-gray-900 rounded-lg hover:bg-gray-100 transition-colors"
-            >
-              Upload Images
-            </Link>
           </div>
         </div>
       </div>
@@ -270,20 +319,155 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* User Preferences */}
-        {userStats?.preferences && Object.keys(userStats.preferences).length > 0 && (
-          <div className="bg-white rounded-xl p-6 shadow-sm mb-8">
-            <h3 className="text-xl font-semibold text-gray-900 mb-6">Current Preferences</h3>
-            <div className="grid md:grid-cols-2 gap-4">
-              {Object.entries(userStats.preferences).map(([key, value]) => (
-                <div key={key} className="flex justify-between items-center py-2 px-4 bg-gray-50 rounded-lg">
-                  <span className="font-medium text-gray-700 capitalize">{key.replace(/([A-Z])/g, ' $1')}</span>
-                  <span className="text-gray-600">{String(value)}</span>
-                </div>
-              ))}
+        {/* Session History */}
+        <div className="mb-4">
+          <h2 className="text-2xl font-bold text-white">Session History</h2>
+          <p className="text-gray-300 text-sm mt-1">
+            Showing {getExperienceTypeFromTheme(theme.name).toUpperCase()} experience only
+          </p>
+        </div>
+        <div className="grid md:grid-cols-3 gap-6 mb-8">
+          {/* Images Card - Left (clickable users) */}
+          <div className="bg-white rounded-xl shadow-sm overflow-hidden" style={{ height: '500px' }}>
+            <div className="h-full flex flex-col">
+              <div className="p-4 border-b border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-900">Players & Images</h3>
+                <p className="text-xs text-gray-500 mt-1">{recentImages.length} uploads</p>
+              </div>
+              <div className="flex-1 overflow-y-auto p-3 min-h-0">
+                {recentImages.length === 0 ? (
+                  <div className="text-center py-8 text-gray-400">
+                    <p>No images uploaded yet</p>
+                    <Link href="/upload" className="text-sm text-blue-600 hover:underline mt-2 inline-block">
+                      Upload your first image →
+                    </Link>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {recentImages.map((image) => (
+                      <button
+                        key={image.id}
+                        onClick={() => setSelectedOwner(image.owner || null)}
+                        className={`w-full flex items-center space-x-3 p-2 rounded-lg transition-all hover:bg-gray-50 ${
+                          selectedOwner === image.owner ? 'bg-blue-50 ring-2 ring-blue-500' : ''
+                        }`}
+                      >
+                        {/* Image Thumbnail */}
+                        <div className="flex-shrink-0">
+                          <img
+                            src={image.imageUrl}
+                            alt={image.fileName}
+                            className="w-12 h-12 rounded-lg object-cover"
+                          />
+                        </div>
+                        {/* User Info */}
+                        <div className="flex-1 text-left min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">
+                            {image.owner || 'Unknown User'}
+                          </p>
+                          <p className="text-xs text-gray-500 truncate">
+                            {image.fileName}
+                          </p>
+                          <p className="text-xs text-gray-400">
+                            {new Date(image.uploadDate).toLocaleDateString()}
+                          </p>
+                        </div>
+                        {/* Status Badge */}
+                        {image.approved && (
+                          <div className="flex-shrink-0">
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                              ✓
+                            </span>
+                          </div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        )}
+
+          {/* User Comments Card - Right (filtered by selected user) */}
+          <div className="md:col-span-2 bg-white rounded-xl shadow-sm overflow-hidden" style={{ height: '500px' }}>
+            <div className="h-full flex flex-col">
+              <div className="p-4 border-b border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {selectedOwner ? `Comments from ${selectedOwner}` : 'All Activity'}
+                </h3>
+                {selectedOwner && (
+                  <button
+                    onClick={() => setSelectedOwner(null)}
+                    className="text-xs text-blue-600 hover:underline mt-1"
+                  >
+                    ← Show all activity
+                  </button>
+                )}
+              </div>
+              <div className="flex-1 overflow-y-auto p-4 min-h-0">
+                {activityEvents.length === 0 ? (
+                  <div className="text-center py-8 text-gray-400">
+                    <p>No activity yet</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {activityEvents
+                      .filter(event => !selectedOwner || event.owner === selectedOwner)
+                      .map((event) => (
+                        <div key={event.id} className="flex space-x-3 p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors">
+                          {/* Icon */}
+                          <div className="flex-shrink-0">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                              event.type === 'approval' ? 'bg-green-100' : 'bg-blue-100'
+                            }`}>
+                              {event.type === 'approval' ? (
+                                <svg className="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                </svg>
+                              ) : (
+                                <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                                </svg>
+                              )}
+                            </div>
+                          </div>
+                          {/* Content */}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm text-gray-900">{event.message}</p>
+                            <div className="flex items-center space-x-2 mt-1">
+                              <p className="text-xs text-gray-500">
+                                {event.owner || 'Unknown'}
+                              </p>
+                              <span className="text-gray-300">•</span>
+                              <p className="text-xs text-gray-400">
+                                {new Date(event.timestamp).toLocaleDateString()}
+                              </p>
+                            </div>
+                          </div>
+                          {/* Thumbnail if available */}
+                          {event.imageUrl && (
+                            <div className="flex-shrink-0">
+                              <img
+                                src={event.imageUrl}
+                                alt="Activity"
+                                className="w-12 h-12 rounded object-cover"
+                              />
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    {selectedOwner && activityEvents.filter(e => e.owner === selectedOwner).length === 0 && (
+                      <div className="text-center py-8 text-gray-400">
+                        <p>No activity from this user yet</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
       </div>
 
       {/* Share Workspace Modal */}

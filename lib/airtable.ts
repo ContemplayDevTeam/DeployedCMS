@@ -386,6 +386,7 @@ export class AirtableBackend {
     metadata?: Record<string, unknown>
     tags?: string[]
     owner?: string
+    experienceType?: string
   }): Promise<QueueItem> {
     console.log('🏦 Banking image for user:', userEmail)
 
@@ -411,6 +412,9 @@ export class AirtableBackend {
       }
       if (imageData.owner) {
         fields['Owner'] = imageData.owner
+      }
+      if (imageData.experienceType) {
+        fields['Experience Type'] = imageData.experienceType
       }
 
       const payload = {
@@ -510,7 +514,8 @@ export class AirtableBackend {
   // Get banked images (images without a publish date are considered banked)
   async getBankedImages(userEmail: string): Promise<QueueItem[]> {
     try {
-      const response = await this.makeRequest(`/${this.tableIds.queue}?filterByFormula=${encodeURIComponent(`AND({User Email} = '${userEmail}', {Publish Date} = BLANK())`)}&sort[0][field]=Upload Date&sort[0][direction]=desc`)
+      // Fetch ALL banked images (not just for specific user) to allow cross-user dashboard views
+      const response = await this.makeRequest(`/${this.tableIds.queue}?filterByFormula=${encodeURIComponent(`{Publish Date} = BLANK()`)}&sort[0][field]=Upload Date&sort[0][direction]=desc`)
 
       return response.records.map((record: { id: string; fields: Record<string, unknown> }) => ({
         id: record.id,
@@ -523,8 +528,9 @@ export class AirtableBackend {
         notes: record.fields['Notes'] as string || '',
         tags: record.fields['Tags'] as string[] || [],
         metadata: record.fields['Metadata'] ? JSON.parse(record.fields['Metadata'] as string) : undefined,
-        owner: record.fields['Owner'] as string || '',
-        approved: record.fields['Approved'] as boolean || false
+        owner: record.fields['Owner'] as string || record.fields['User Email'] as string || '',
+        approved: record.fields['Approved'] as boolean || false,
+        experienceType: record.fields['Experience Type'] as string
       }))
     } catch (error) {
       console.error('Error getting banked images:', error)

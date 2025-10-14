@@ -22,6 +22,9 @@
 | **Tags** | Multiple Select | Content tags for categorization | `marketing`, `campaign`, `product` |
 | **Metadata** | Long Text | JSON metadata about the image | `{"campaign": "summer2024"}` |
 | **Processing Time** | Number | Time taken to process in seconds | `45` |
+| **Owner** | Single Line Text | Username or identifier of the player/uploader | `john@example.com` |
+| **Experience Type** | Single Select | Type of experience/project this image belongs to | `hnp`, `general` |
+| **Approved** | Checkbox | Whether the image has been approved for publishing | `true` |
 
 ## Users Table Fields
 
@@ -116,6 +119,8 @@ Create a Single Select field with these exact options:
 2. Set **Image Queue #** as the primary field (Auto Number)
 3. Configure **Status** as Single Select with options: `queued`, `processing`, `published`, `failed`
 4. Set **Status** default value to `queued`
+5. Configure **Experience Type** as Single Select with options: `hnp`, `general`, `nature`, `earth`, `adventure`, `wellness` (add more as needed)
+6. Set **Approved** checkbox default to `false`
 
 ### 2. Users Table Setup
 1. Create fields with exact names and types as listed above
