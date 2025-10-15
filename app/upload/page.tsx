@@ -542,36 +542,6 @@ export default function Home() {
           <>
             {/* Main Upload Area */}
             <div className="flex-1 flex flex-col p-6" style={{ backgroundColor: theme.colors.background }}>
-              <div className="text-center mb-8">
-                <div className="relative mx-auto w-16 h-16 mb-4">
-                  <motion.div
-                    className="absolute inset-0 rounded-full"
-                    style={{
-                      border: '2px solid transparent',
-                      borderTopColor: theme.colors.text,
-                      borderRightColor: theme.colors.text
-                    }}
-                    animate={{ rotate: 360 }}
-                    transition={{
-                      duration: 12,
-                      repeat: Infinity,
-                      ease: "linear"
-                    }}
-                  />
-                  <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{ backgroundColor: theme.colors.secondary }}>
-                    <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: theme.colors.background }}>
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                    </svg>
-                  </div>
-                </div>
-                <p className="text-lg font-semibold mb-2" style={{ color: theme.colors.text }}>Upload Your Images</p>
-                <p className="text-xl max-w-2xl mx-auto" style={{ color: theme.colors.text }}>
-                  Configure your default settings below, then drag and drop your images.
-                </p>
-              </div>
-
-
-
 
               <div className="w-full rounded-2xl overflow-hidden" style={{ backgroundColor: theme.colors.surface, border: `2px solid ${theme.colors.text}` }}>
                 {/* Drop Zone Header */}
@@ -582,10 +552,26 @@ export default function Home() {
                 >
                   <input {...getInputProps()} />
                   <div className="text-center">
-                    <div className="mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-4" style={{ backgroundColor: theme.colors.secondary }}>
-                      <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: theme.colors.background }}>
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                      </svg>
+                    <div className="relative mx-auto w-16 h-16 mb-4">
+                      <motion.div
+                        className="absolute inset-0 rounded-full"
+                        style={{
+                          border: '2px solid transparent',
+                          borderTopColor: theme.colors.text,
+                          borderRightColor: theme.colors.text
+                        }}
+                        animate={{ rotate: 360 }}
+                        transition={{
+                          duration: 12,
+                          repeat: Infinity,
+                          ease: "linear"
+                        }}
+                      />
+                      <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{ backgroundColor: theme.colors.secondary }}>
+                        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: theme.colors.background }}>
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                        </svg>
+                      </div>
                     </div>
                     <p className="text-lg font-semibold mb-2" style={{ color: theme.colors.text }}>Drop your images here</p>
                     <p className="mb-3" style={{ color: theme.colors.text }}>or click to browse files</p>
