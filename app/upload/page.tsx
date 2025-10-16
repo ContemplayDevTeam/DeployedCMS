@@ -541,7 +541,10 @@ export default function Home() {
         {storedEmail ? (
           <>
             {/* Main Upload Area */}
-            <div className="flex-1 flex flex-col p-6" style={{ backgroundColor: theme.colors.background }}>
+            <div className="flex-1 flex flex-col p-6 pt-12" style={{ backgroundColor: theme.colors.background }}>
+              <div className="text-center mb-16">
+                <p className="text-3xl font-bold" style={{ color: theme.colors.text }}>Upload Your Images</p>
+              </div>
 
               <div className="w-full rounded-2xl overflow-hidden" style={{ backgroundColor: theme.colors.surface, border: `2px solid ${theme.colors.text}` }}>
                 {/* Drop Zone Header */}

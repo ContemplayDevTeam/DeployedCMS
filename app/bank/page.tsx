@@ -55,6 +55,13 @@ export default function ImageBank() {
     publishDate: ''
   })
 
+  // Edit queue item state
+  const [editingQueueId, setEditingQueueId] = useState<string | null>(null)
+  const [queueEditFormData, setQueueEditFormData] = useState({
+    publishDate: '',
+    publishTime: ''
+  })
+
   // Error state for missing date/time
   const [dateTimeError, setDateTimeError] = useState('')
 
@@ -403,6 +410,50 @@ export default function ImageBank() {
     fetchBankedImages()
   }
 
+  const openQueueEditModal = (queueItemId: string) => {
+    const item = queueItems.find(q => q.id === queueItemId)
+    if (!item) return
+
+    setQueueEditFormData({
+      publishDate: item.publishDate || '',
+      publishTime: item.publishTime || ''
+    })
+    setEditingQueueId(queueItemId)
+  }
+
+  const saveQueueEdit = async () => {
+    if (!editingQueueId) return
+
+    const email = localStorage.getItem('uploader_email')
+    if (!email) return
+
+    try {
+      const response = await fetch('/api/airtable/queue/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          recordId: editingQueueId,
+          publishDate: queueEditFormData.publishDate,
+          publishTime: queueEditFormData.publishTime
+        })
+      })
+
+      if (response.ok) {
+        setEditingQueueId(null)
+        fetchQueueItems() // Refresh the queue to show updated data
+      } else {
+        alert('Failed to update queue item')
+      }
+    } catch (error) {
+      console.error('Error updating queue item:', error)
+      alert('Error updating queue item')
+    }
+  }
+
+  const closeQueueEditModal = () => {
+    setEditingQueueId(null)
+  }
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -441,7 +492,7 @@ export default function ImageBank() {
                   className="px-4 py-2 rounded-lg border transition-colors"
                   style={{
                     borderColor: theme.colors.border,
-                    color: theme.colors.text,
+                    color: selectedImages.size === bankedImages.length ? 'white' : 'black',
                     backgroundColor: selectedImages.size === bankedImages.length ? theme.colors.accent : 'transparent'
                   }}
                 >
@@ -713,15 +764,29 @@ export default function ImageBank() {
                             <span className="text-xs px-2 py-1 rounded-full bg-blue-500 text-white">
                               In Queue
                             </span>
-                            <button
-                              onClick={() => deleteQueueItem(item.id)}
-                              className="p-1 text-red-400 hover:text-red-600 transition-colors"
-                              title="Remove from queue"
-                            >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                              </svg>
-                            </button>
+                            <div className="flex items-center space-x-1">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  openQueueEditModal(item.id)
+                                }}
+                                className="p-1 text-gray-400 hover:text-blue-600 transition-colors"
+                                title="Edit publish date/time"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
+                              </button>
+                              <button
+                                onClick={() => deleteQueueItem(item.id)}
+                                className="p-1 text-red-400 hover:text-red-600 transition-colors"
+                                title="Remove from queue"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                              </button>
+                            </div>
                           </div>
 
                           <div className="text-xs text-gray-500">
@@ -822,7 +887,7 @@ export default function ImageBank() {
 
               <div>
                 <label className="block text-sm font-medium mb-2" style={{ color: theme.colors.text }}>
-                  Notes
+                  Internal Notes
                 </label>
                 <textarea
                   value={editFormData.notes}
@@ -954,6 +1019,71 @@ export default function ImageBank() {
                     setInviteEmail('')
                     setInviteMessage('')
                   }}
+                  className="px-4 py-3 rounded-lg font-medium transition-colors"
+                  style={{ backgroundColor: theme.colors.surface, color: theme.colors.text }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Queue Item Modal */}
+      {editingQueueId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="max-w-md w-full rounded-2xl p-6 shadow-2xl" style={{ backgroundColor: theme.colors.background }}>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold" style={{ color: theme.colors.text }}>Edit Publish Date & Time</h3>
+              <button
+                onClick={closeQueueEditModal}
+                className="p-2 rounded-lg transition-colors hover:bg-gray-100"
+                style={{ color: theme.colors.text }}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: theme.colors.text }}>
+                  Publish Date
+                </label>
+                <input
+                  type="date"
+                  value={queueEditFormData.publishDate}
+                  onChange={(e) => setQueueEditFormData({ ...queueEditFormData, publishDate: e.target.value })}
+                  className="w-full px-4 py-3 rounded-lg border-2 focus:outline-none focus:ring-2"
+                  style={{ borderColor: theme.colors.border, backgroundColor: theme.colors.surface, color: theme.colors.text }}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: theme.colors.text }}>
+                  Publish Time
+                </label>
+                <input
+                  type="time"
+                  value={queueEditFormData.publishTime}
+                  onChange={(e) => setQueueEditFormData({ ...queueEditFormData, publishTime: e.target.value })}
+                  className="w-full px-4 py-3 rounded-lg border-2 focus:outline-none focus:ring-2"
+                  style={{ borderColor: theme.colors.border, backgroundColor: theme.colors.surface, color: theme.colors.text }}
+                />
+              </div>
+
+              <div className="flex space-x-3">
+                <button
+                  onClick={saveQueueEdit}
+                  className="flex-1 px-4 py-3 rounded-lg font-medium transition-colors"
+                  style={{ backgroundColor: theme.colors.accent, color: theme.colors.background }}
+                >
+                  Save Changes
+                </button>
+                <button
+                  onClick={closeQueueEditModal}
                   className="px-4 py-3 rounded-lg font-medium transition-colors"
                   style={{ backgroundColor: theme.colors.surface, color: theme.colors.text }}
                 >
