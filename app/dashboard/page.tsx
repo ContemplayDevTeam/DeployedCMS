@@ -76,6 +76,8 @@ export default function Dashboard() {
   const [recentImages, setRecentImages] = useState<RecentImage[]>([])
   const [activityEvents, setActivityEvents] = useState<ActivityEvent[]>([])
   const [selectedImageId, setSelectedImageId] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [showSearchInput, setShowSearchInput] = useState(false)
 
   // Share modal state
   const [showShareModal, setShowShareModal] = useState(false)
@@ -438,9 +440,28 @@ export default function Dashboard() {
             <div className="md:col-span-2 h-full overflow-hidden">
               <div className="h-full flex flex-col">
                 <div className="p-4 border-b border-gray-200 flex-shrink-0">
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    {selectedImageId ? 'Contemplations by Question' : 'Select an image'}
-                  </h3>
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      {selectedImageId ? 'Comments from...' : 'Select an image'}
+                    </h3>
+                    {selectedImageId && (
+                      <button
+                        onClick={() => setShowSearchInput(!showSearchInput)}
+                        className="px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium"
+                      >
+                        {showSearchInput ? 'Close' : 'Search'}
+                      </button>
+                    )}
+                  </div>
+                  {selectedImageId && showSearchInput && (
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Search comments..."
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    />
+                  )}
                 </div>
                 <div className="flex-1 overflow-y-auto p-4 min-h-0">
                 {!selectedImageId ? (
@@ -458,10 +479,18 @@ export default function Dashboard() {
                     )
                   }
 
+                  // Filter messages by search query if active
+                  const filteredMessages = searchQuery.trim()
+                    ? selectedImage.messages.filter((msg: Message) =>
+                        msg.message.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        msg.username.toLowerCase().includes(searchQuery.toLowerCase())
+                      )
+                    : selectedImage.messages
+
                   // Group messages by Claire question number (assistantNumber)
                   const questionGroups = new Map<number, Message[]>()
 
-                  selectedImage.messages.forEach((msg: Message) => {
+                  filteredMessages.forEach((msg: Message) => {
                     const questionNum = msg.assistantNumber || 0
                     if (!questionGroups.has(questionNum)) {
                       questionGroups.set(questionNum, [])
@@ -471,6 +500,15 @@ export default function Dashboard() {
 
                   // Sort question groups by question number
                   const sortedQuestions = Array.from(questionGroups.entries()).sort((a, b) => a[0] - b[0])
+
+                  // Show "no results" if search filtered everything out
+                  if (searchQuery.trim() && sortedQuestions.length === 0) {
+                    return (
+                      <div className="text-center py-8 text-gray-400">
+                        <p>No comments match your search</p>
+                      </div>
+                    )
+                  }
 
                   return (
                     <div className="space-y-6">
