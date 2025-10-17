@@ -740,6 +740,43 @@ export class AirtableBackend {
     }
   }
 
+  async updateQueueItem(recordId: string, updates: { publishDate?: string; publishTime?: string }): Promise<boolean> {
+    try {
+      console.log('📝 Updating queue item:', recordId)
+      console.log('📋 Updates:', updates)
+
+      const fields: Record<string, unknown> = {}
+
+      if (updates.publishDate) {
+        fields['Publish Date'] = updates.publishDate
+      }
+
+      if (updates.publishTime) {
+        // Convert publishTime (HH:MM) to full ISO datetime
+        const publishDateTime = new Date(`${updates.publishDate || new Date().toISOString().split('T')[0]}T${updates.publishTime}:00.000Z`)
+        fields['Publish Time'] = publishDateTime.toISOString()
+      }
+
+      const payload = {
+        records: [{
+          id: recordId,
+          fields
+        }]
+      }
+
+      await this.makeRequest(`/${this.tableIds.queue}`, {
+        method: 'PATCH',
+        body: JSON.stringify(payload)
+      })
+
+      console.log('✅ Successfully updated queue item:', recordId)
+      return true
+    } catch (error) {
+      console.error('❌ Error updating queue item:', recordId, error)
+      return false
+    }
+  }
+
   async reorderQueue(userEmail: string, newOrder: string[]): Promise<boolean> {
     try {
       console.log('🔄 Reordering queue for user:', userEmail)

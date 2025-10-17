@@ -161,10 +161,10 @@ export function applyTheme(theme: Theme) {
 // This maps UI themes to Prisma database experienceType values
 export function getExperienceTypeFromTheme(themeName: string): string {
   const themeToExperience: Record<string, string> = {
-    'homegrownnationalpark': 'nature playground', // HNP maps to nature playground experience
-    'default': 'design', // Default maps to design experience
+    'homegrownnationalpark': 'art', // HNP maps to art (testing)
+    'default': 'art', // Default maps to art contemplations
     // Add more mappings as you add more themes
   }
 
-  return themeToExperience[themeName.toLowerCase()] || 'design'
+  return themeToExperience[themeName.toLowerCase()] || 'art'
 }

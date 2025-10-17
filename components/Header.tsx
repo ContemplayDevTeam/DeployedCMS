@@ -95,20 +95,36 @@ export function Header() {
               {/* Right side - Notifications & Auth buttons */}
               <div className="hidden lg:flex lg:items-center lg:space-x-2 xl:space-x-4">
                 {storedEmail && <NotificationBell />}
-                <Link
-                  href="/login"
-                  className="text-sm font-medium transition-colors hover:opacity-80 whitespace-nowrap"
-                  style={{ color: '#42504d' }}
-                >
-                  Sign In
-                </Link>
-                <Link
-                  href="/signup"
-                  className="inline-flex items-center rounded-lg px-3 xl:px-4 py-2 text-sm font-medium transition-all hover:shadow-md hover:opacity-90 whitespace-nowrap"
-                  style={{ color: theme.colors.background, backgroundColor: theme.colors.accent }}
-                >
-                  Get Started
-                </Link>
+                {storedEmail ? (
+                  <button
+                    onClick={() => {
+                      localStorage.removeItem('uploader_email')
+                      localStorage.removeItem('theme_password')
+                      window.location.href = '/login'
+                    }}
+                    className="inline-flex items-center rounded-lg px-3 xl:px-4 py-2 text-sm font-medium transition-all hover:shadow-md hover:opacity-90 whitespace-nowrap"
+                    style={{ color: theme.colors.background, backgroundColor: theme.colors.accent }}
+                  >
+                    Sign Out
+                  </button>
+                ) : (
+                  <>
+                    <Link
+                      href="/login"
+                      className="text-sm font-medium transition-colors hover:opacity-80 whitespace-nowrap"
+                      style={{ color: '#42504d' }}
+                    >
+                      Sign In
+                    </Link>
+                    <Link
+                      href="/signup"
+                      className="inline-flex items-center rounded-lg px-3 xl:px-4 py-2 text-sm font-medium transition-all hover:shadow-md hover:opacity-90 whitespace-nowrap"
+                      style={{ color: theme.colors.background, backgroundColor: theme.colors.accent }}
+                    >
+                      Get Started
+                    </Link>
+                  </>
+                )}
               </div>
 
               {/* Mobile menu button */}
@@ -171,22 +187,39 @@ export function Header() {
             </div>
             <div className="border-t pb-3 pt-4" style={{ borderColor: theme.colors.accent, backgroundColor: theme.colors.surface }}>
               <div className="space-y-1">
-                <Disclosure.Button
-                  as={Link}
-                  href="/login"
-                  className="block py-2 pl-3 pr-4 text-base font-medium transition-colors hover:opacity-80"
-                  style={{ color: '#42504d' }}
-                >
-                  Sign In
-                </Disclosure.Button>
-                <Disclosure.Button
-                  as={Link}
-                  href="/signup"
-                  className="block py-2 pl-3 pr-4 text-base font-medium transition-colors hover:opacity-80"
-                  style={{ color: theme.colors.background }}
-                >
-                  Get Started
-                </Disclosure.Button>
+                {storedEmail ? (
+                  <Disclosure.Button
+                    as="button"
+                    onClick={() => {
+                      localStorage.removeItem('uploader_email')
+                      localStorage.removeItem('theme_password')
+                      window.location.href = '/login'
+                    }}
+                    className="block py-2 pl-3 pr-4 text-base font-medium transition-colors hover:opacity-80 w-full text-left"
+                    style={{ color: '#42504d' }}
+                  >
+                    Sign Out
+                  </Disclosure.Button>
+                ) : (
+                  <>
+                    <Disclosure.Button
+                      as={Link}
+                      href="/login"
+                      className="block py-2 pl-3 pr-4 text-base font-medium transition-colors hover:opacity-80"
+                      style={{ color: '#42504d' }}
+                    >
+                      Sign In
+                    </Disclosure.Button>
+                    <Disclosure.Button
+                      as={Link}
+                      href="/signup"
+                      className="block py-2 pl-3 pr-4 text-base font-medium transition-colors hover:opacity-80"
+                      style={{ color: theme.colors.background }}
+                    >
+                      Get Started
+                    </Disclosure.Button>
+                  </>
+                )}
               </div>
             </div>
           </Disclosure.Panel>

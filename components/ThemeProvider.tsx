@@ -31,14 +31,16 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
   const setPasswordTheme = (password: string) => {
     const newTheme = getThemeFromPassword(password)
     setTheme(newTheme)
-    setCurrentThemeName(newTheme.name.toLowerCase())
+    // Normalize theme name: remove spaces and lowercase to match theme keys
+    const normalizedThemeName = newTheme.name.toLowerCase().replace(/\s+/g, '')
+    setCurrentThemeName(normalizedThemeName)
 
     // Apply theme to DOM
     applyTheme(newTheme)
 
     // Store in localStorage for persistence
     localStorage.setItem('theme_password', password)
-    localStorage.setItem('theme_name', newTheme.name.toLowerCase())
+    localStorage.setItem('theme_name', normalizedThemeName)
 
     console.log(`🎨 Theme switched to: ${newTheme.name} via workspace code`)
   }
@@ -50,14 +52,16 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
 
     const newTheme = getThemeForTesting(email, testTheme || undefined)
     setTheme(newTheme)
-    setCurrentThemeName(newTheme.name.toLowerCase())
+    // Normalize theme name: remove spaces and lowercase to match theme keys
+    const normalizedThemeName = newTheme.name.toLowerCase().replace(/\s+/g, '')
+    setCurrentThemeName(normalizedThemeName)
 
     // Apply theme to DOM
     applyTheme(newTheme)
 
     // Store in localStorage for persistence
     localStorage.setItem('user_email', email)
-    localStorage.setItem('theme_name', newTheme.name.toLowerCase())
+    localStorage.setItem('theme_name', normalizedThemeName)
 
     const themeSource = testTheme ? `(test parameter: ${testTheme})` : '(email-based)'
     console.log(`🎨 Theme switched to: ${newTheme.name} for email: ${email} ${themeSource}`)

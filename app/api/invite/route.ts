@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
     const inviteData = {
       to: email,
       from: senderEmail || 'noreply@workspace.com',
-      subject: `${senderEmail ? senderEmail + ' invited' : 'You\'re invited'} - Join our workspace!`,
+      subject: `Join our ContemPlay Workspace! - ${senderEmail ? senderEmail + ' invited you' : 'You\'re invited'}`,
       body: `
 Hi there!
 
@@ -87,7 +87,7 @@ Sent from the Workspace Platform
         apiInstance.setApiKey(brevo.TransactionalEmailsApiApiKeys.apiKey, brevoApiKey)
 
         const sendSmtpEmail = new brevo.SendSmtpEmail()
-        sendSmtpEmail.subject = inviteData.subject
+        sendSmtpEmail.subject = `Join our ContemPlay Workspace! - ${senderEmail ? senderEmail + ' invited you' : 'You\'re invited'}`
         // MUST use verified sender email from Brevo account
         sendSmtpEmail.sender = { name: brevoSenderName, email: brevoSenderEmail }
         // Use replyTo to show who sent the invite (optional)

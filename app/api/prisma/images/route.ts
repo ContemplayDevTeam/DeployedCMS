@@ -36,9 +36,9 @@ export async function POST(request: NextRequest) {
         image: true,
         messages: {
           orderBy: {
-            createdAt: 'desc'
-          },
-          take: 1 // Get the most recent message for each conversation
+            createdAt: 'asc' // Sort messages chronologically (oldest first)
+          }
+          // Fetch ALL messages for each conversation
         }
       },
       orderBy: {
@@ -57,7 +57,15 @@ export async function POST(request: NextRequest) {
       experienceType: conv.experienceType,
       approved: true, // Prisma conversations are already created/approved
       status: 'active',
-      notes: conv.messages[0]?.message || '' // Most recent message as "notes"
+      notes: conv.messages[0]?.message || '', // First message as preview
+      messages: conv.messages.map(msg => ({
+        id: msg.id.toString(),
+        sender: msg.sender,
+        message: msg.message,
+        username: msg.username || 'Unknown',
+        createdAt: msg.createdAt.toISOString(),
+        assistantNumber: msg.assistantNumber || undefined
+      }))
     }))
 
     console.log(`✅ Found ${images.length} images for ${experienceType}`)

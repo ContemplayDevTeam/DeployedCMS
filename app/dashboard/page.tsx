@@ -28,6 +28,15 @@ interface QueueStats {
   avgProcessingTime: number
 }
 
+interface Message {
+  id: string
+  sender: string
+  message: string
+  username: string
+  createdAt: string
+  assistantNumber?: number
+}
+
 interface RecentImage {
   id: string
   imageUrl: string
@@ -37,6 +46,7 @@ interface RecentImage {
   approved?: boolean
   owner?: string
   experienceType?: string
+  messages?: Message[]
 }
 
 interface ActivityEvent {
@@ -49,7 +59,7 @@ interface ActivityEvent {
 }
 
 export default function Dashboard() {
-  const { theme } = useTheme()
+  const { theme, currentThemeName } = useTheme()
   const [userStats, setUserStats] = useState<UserStats | null>(null)
   const [queueStats, setQueueStats] = useState<QueueStats>({
     total: 0,
@@ -65,7 +75,7 @@ export default function Dashboard() {
   const [storedEmail, setStoredEmail] = useState<string>('')
   const [recentImages, setRecentImages] = useState<RecentImage[]>([])
   const [activityEvents, setActivityEvents] = useState<ActivityEvent[]>([])
-  const [selectedOwner, setSelectedOwner] = useState<string | null>(null)
+  const [selectedImageId, setSelectedImageId] = useState<string | null>(null)
 
   // Share modal state
   const [showShareModal, setShowShareModal] = useState(false)
@@ -139,7 +149,7 @@ export default function Dashboard() {
       }
 
       // Load images from Prisma database (filtered by experience type)
-      const currentExperienceType = getExperienceTypeFromTheme(theme.name)
+      const currentExperienceType = getExperienceTypeFromTheme(currentThemeName)
 
       const imagesResponse = await fetch('/api/prisma/images', {
         method: 'POST',
@@ -154,21 +164,50 @@ export default function Dashboard() {
         const imagesData = await imagesResponse.json()
         const images = imagesData.images || []
 
-        // Set recent images for left card
-        setRecentImages(images.slice(0, 20))
+        // Group conversations by unique images
+        const imageMap = new Map<string, RecentImage>()
 
-        // Generate activity timeline from images for right card
-        const events: ActivityEvent[] = images.slice(0, 50).map((item: RecentImage, index: number) => ({
-          id: `event-${index}`,
-          type: item.approved ? 'approval' : 'upload',
-          message: item.approved
-            ? `Approved "${item.fileName}" for publishing`
-            : `Uploaded "${item.fileName}"`,
-          timestamp: item.uploadDate,
-          imageUrl: item.imageUrl,
-          owner: item.owner
-        }))
-        setActivityEvents(events)
+        images.forEach((item: RecentImage) => {
+          const imageKey = item.imageUrl
+
+          if (!imageMap.has(imageKey)) {
+            imageMap.set(imageKey, {
+              ...item,
+              messages: item.messages || []
+            })
+          } else {
+            // Merge messages from multiple conversations of the same image
+            const existing = imageMap.get(imageKey)!
+            existing.messages = [...(existing.messages || []), ...(item.messages || [])]
+          }
+        })
+
+        // Convert map to array and set
+        const uniqueImages = Array.from(imageMap.values()).slice(0, 20)
+        setRecentImages(uniqueImages)
+
+        // Generate activity timeline from ALL messages (for default view)
+        const allMessages: ActivityEvent[] = []
+
+        uniqueImages.forEach((item: RecentImage) => {
+          if (item.messages && item.messages.length > 0) {
+            item.messages.forEach((msg: Message) => {
+              allMessages.push({
+                id: msg.id,
+                type: msg.sender === 'user' ? 'upload' : 'system',
+                message: msg.message,
+                timestamp: msg.createdAt,
+                imageUrl: item.imageUrl,
+                owner: msg.sender === 'user' ? (item.owner || msg.username) : 'Assistant'
+              })
+            })
+          }
+        })
+
+        // Sort all messages by timestamp (newest first)
+        allMessages.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+
+        setActivityEvents(allMessages.slice(0, 100)) // Show most recent 100 messages
       }
     } catch (error) {
       console.error('Error loading dashboard data:', error)
@@ -323,18 +362,19 @@ export default function Dashboard() {
         <div className="mb-4">
           <h2 className="text-2xl font-bold text-white">Session History</h2>
           <p className="text-gray-300 text-sm mt-1">
-            Showing {getExperienceTypeFromTheme(theme.name).toUpperCase()} experience only
+            Showing {getExperienceTypeFromTheme(currentThemeName).toUpperCase()} experience only
           </p>
         </div>
-        <div className="grid md:grid-cols-3 gap-6 mb-8">
-          {/* Images Card - Left (clickable users) */}
-          <div className="bg-white rounded-xl shadow-sm overflow-hidden" style={{ height: '500px' }}>
-            <div className="h-full flex flex-col">
-              <div className="p-4 border-b border-gray-200">
-                <h3 className="text-lg font-semibold text-gray-900">Players & Images</h3>
-                <p className="text-xs text-gray-500 mt-1">{recentImages.length} uploads</p>
-              </div>
-              <div className="flex-1 overflow-y-auto p-3 min-h-0">
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden mb-8" style={{ height: '500px', maxHeight: '500px' }}>
+          <div className="grid md:grid-cols-3 h-full">
+            {/* Images Card - Left (clickable images) */}
+            <div className="border-r border-gray-200 h-full overflow-hidden">
+              <div className="h-full flex flex-col">
+                <div className="p-4 border-b border-gray-200 flex-shrink-0">
+                  <h3 className="text-lg font-semibold text-gray-900">Images</h3>
+                  <p className="text-xs text-gray-500 mt-1">{recentImages.length} unique images</p>
+                </div>
+                <div className="flex-1 overflow-y-auto p-3 min-h-0">
                 {recentImages.length === 0 ? (
                   <div className="text-center py-8 text-gray-400">
                     <p>No images uploaded yet</p>
@@ -347,26 +387,32 @@ export default function Dashboard() {
                     {recentImages.map((image) => (
                       <button
                         key={image.id}
-                        onClick={() => setSelectedOwner(image.owner || null)}
+                        onClick={() => setSelectedImageId(image.id)}
                         className={`w-full flex items-center space-x-3 p-2 rounded-lg transition-all hover:bg-gray-50 ${
-                          selectedOwner === image.owner ? 'bg-blue-50 ring-2 ring-blue-500' : ''
+                          selectedImageId === image.id ? 'bg-blue-50 ring-2 ring-blue-500' : ''
                         }`}
                       >
                         {/* Image Thumbnail */}
                         <div className="flex-shrink-0">
-                          <img
-                            src={image.imageUrl}
-                            alt={image.fileName}
-                            className="w-12 h-12 rounded-lg object-cover"
-                          />
+                          {image.imageUrl ? (
+                            <img
+                              src={image.imageUrl}
+                              alt={image.fileName}
+                              className="w-16 h-16 rounded-lg object-cover"
+                            />
+                          ) : (
+                            <div className="w-16 h-16 rounded-lg bg-gray-200 flex items-center justify-center">
+                              <span className="text-gray-400 text-xs">No image</span>
+                            </div>
+                          )}
                         </div>
-                        {/* User Info */}
+                        {/* Image Info */}
                         <div className="flex-1 text-left min-w-0">
                           <p className="text-sm font-medium text-gray-900 truncate">
-                            {image.owner || 'Unknown User'}
-                          </p>
-                          <p className="text-xs text-gray-500 truncate">
                             {image.fileName}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {image.messages?.length || 0} contemplations
                           </p>
                           <p className="text-xs text-gray-400">
                             {new Date(image.uploadDate).toLocaleDateString()}
@@ -386,84 +432,76 @@ export default function Dashboard() {
                 )}
               </div>
             </div>
-          </div>
+            </div>
 
-          {/* User Comments Card - Right (filtered by selected user) */}
-          <div className="md:col-span-2 bg-white rounded-xl shadow-sm overflow-hidden" style={{ height: '500px' }}>
-            <div className="h-full flex flex-col">
-              <div className="p-4 border-b border-gray-200">
-                <h3 className="text-lg font-semibold text-gray-900">
-                  {selectedOwner ? `Comments from ${selectedOwner}` : 'All Activity'}
-                </h3>
-                {selectedOwner && (
-                  <button
-                    onClick={() => setSelectedOwner(null)}
-                    className="text-xs text-blue-600 hover:underline mt-1"
-                  >
-                    ← Show all activity
-                  </button>
-                )}
-              </div>
-              <div className="flex-1 overflow-y-auto p-4 min-h-0">
-                {activityEvents.length === 0 ? (
+            {/* Contemplations Card - Right (grouped by Claire question, filtered by selected image) */}
+            <div className="md:col-span-2 h-full overflow-hidden">
+              <div className="h-full flex flex-col">
+                <div className="p-4 border-b border-gray-200 flex-shrink-0">
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    {selectedImageId ? 'Contemplations by Question' : 'Select an image'}
+                  </h3>
+                </div>
+                <div className="flex-1 overflow-y-auto p-4 min-h-0">
+                {!selectedImageId ? (
                   <div className="text-center py-8 text-gray-400">
-                    <p>No activity yet</p>
+                    <p>Select an image from the left to view contemplations</p>
                   </div>
-                ) : (
-                  <div className="space-y-4">
-                    {activityEvents
-                      .filter(event => !selectedOwner || event.owner === selectedOwner)
-                      .map((event) => (
-                        <div key={event.id} className="flex space-x-3 p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors">
-                          {/* Icon */}
-                          <div className="flex-shrink-0">
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                              event.type === 'approval' ? 'bg-green-100' : 'bg-blue-100'
-                            }`}>
-                              {event.type === 'approval' ? (
-                                <svg className="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                </svg>
-                              ) : (
-                                <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-                                  <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
-                                </svg>
-                              )}
-                            </div>
+                ) : (() => {
+                  // Find the selected image
+                  const selectedImage = recentImages.find(img => img.id === selectedImageId)
+                  if (!selectedImage || !selectedImage.messages || selectedImage.messages.length === 0) {
+                    return (
+                      <div className="text-center py-8 text-gray-400">
+                        <p>No contemplations for this image yet</p>
+                      </div>
+                    )
+                  }
+
+                  // Group messages by Claire question number (assistantNumber)
+                  const questionGroups = new Map<number, Message[]>()
+
+                  selectedImage.messages.forEach((msg: Message) => {
+                    const questionNum = msg.assistantNumber || 0
+                    if (!questionGroups.has(questionNum)) {
+                      questionGroups.set(questionNum, [])
+                    }
+                    questionGroups.get(questionNum)!.push(msg)
+                  })
+
+                  // Sort question groups by question number
+                  const sortedQuestions = Array.from(questionGroups.entries()).sort((a, b) => a[0] - b[0])
+
+                  return (
+                    <div className="space-y-6">
+                      {sortedQuestions.map(([questionNum, messages]) => (
+                        <div key={questionNum} className="border-l-4 border-blue-500 pl-4">
+                          <h4 className="text-sm font-bold text-gray-700 mb-3">
+                            {questionNum > 0 ? `Claire Question ${questionNum}` : 'Initial Responses'}
+                          </h4>
+                          <div className="space-y-3">
+                            {messages.map((msg) => (
+                              <div key={msg.id} className="p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors">
+                                <p className="text-sm text-gray-900">{msg.message}</p>
+                                <div className="flex items-center space-x-2 mt-2">
+                                  <p className="text-xs text-gray-500">
+                                    {msg.username || 'Anonymous'}
+                                  </p>
+                                  <span className="text-gray-300">•</span>
+                                  <p className="text-xs text-gray-400">
+                                    {new Date(msg.createdAt).toLocaleDateString()}
+                                  </p>
+                                </div>
+                              </div>
+                            ))}
                           </div>
-                          {/* Content */}
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm text-gray-900">{event.message}</p>
-                            <div className="flex items-center space-x-2 mt-1">
-                              <p className="text-xs text-gray-500">
-                                {event.owner || 'Unknown'}
-                              </p>
-                              <span className="text-gray-300">•</span>
-                              <p className="text-xs text-gray-400">
-                                {new Date(event.timestamp).toLocaleDateString()}
-                              </p>
-                            </div>
-                          </div>
-                          {/* Thumbnail if available */}
-                          {event.imageUrl && (
-                            <div className="flex-shrink-0">
-                              <img
-                                src={event.imageUrl}
-                                alt="Activity"
-                                className="w-12 h-12 rounded object-cover"
-                              />
-                            </div>
-                          )}
                         </div>
                       ))}
-                    {selectedOwner && activityEvents.filter(e => e.owner === selectedOwner).length === 0 && (
-                      <div className="text-center py-8 text-gray-400">
-                        <p>No activity from this user yet</p>
-                      </div>
-                    )}
-                  </div>
-                )}
+                    </div>
+                  )
+                })()}
               </div>
+            </div>
             </div>
           </div>
         </div>
