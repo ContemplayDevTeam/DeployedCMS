@@ -3,7 +3,7 @@ import { airtable } from '@/lib/airtable'
 
 export async function POST(request: NextRequest) {
   try {
-    const { recordId, publishDate, publishTime } = await request.json()
+    const { recordId, fileName, publishDate, publishTime } = await request.json()
 
     if (!recordId) {
       return NextResponse.json(
@@ -14,6 +14,7 @@ export async function POST(request: NextRequest) {
 
     // Update the queue item in Airtable
     await airtable.updateQueueItem(recordId, {
+      fileName,
       publishDate,
       publishTime
     })

@@ -58,6 +58,7 @@ export default function ImageBank() {
   // Edit queue item state
   const [editingQueueId, setEditingQueueId] = useState<string | null>(null)
   const [queueEditFormData, setQueueEditFormData] = useState({
+    fileName: '',
     publishDate: '',
     publishTime: ''
   })
@@ -415,6 +416,7 @@ export default function ImageBank() {
     if (!item) return
 
     setQueueEditFormData({
+      fileName: item.fileName || '',
       publishDate: item.publishDate || '',
       publishTime: item.publishTime || ''
     })
@@ -433,6 +435,7 @@ export default function ImageBank() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           recordId: editingQueueId,
+          fileName: queueEditFormData.fileName,
           publishDate: queueEditFormData.publishDate,
           publishTime: queueEditFormData.publishTime
         })
@@ -847,7 +850,7 @@ export default function ImageBank() {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-2" style={{ color: theme.colors.text }}>
-                  File Name
+                  Image Title - Shared in Experience
                 </label>
                 <input
                   type="text"
@@ -1035,7 +1038,7 @@ export default function ImageBank() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
           <div className="max-w-md w-full rounded-2xl p-6 shadow-2xl" style={{ backgroundColor: theme.colors.background }}>
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-bold" style={{ color: theme.colors.text }}>Edit Publish Date & Time</h3>
+              <h3 className="text-xl font-bold" style={{ color: theme.colors.text }}>Edit Queue Item</h3>
               <button
                 onClick={closeQueueEditModal}
                 className="p-2 rounded-lg transition-colors hover:bg-gray-100"
@@ -1048,6 +1051,19 @@ export default function ImageBank() {
             </div>
 
             <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: theme.colors.text }}>
+                  Image Title - Shared in Experience
+                </label>
+                <input
+                  type="text"
+                  value={queueEditFormData.fileName}
+                  onChange={(e) => setQueueEditFormData({ ...queueEditFormData, fileName: e.target.value })}
+                  className="w-full px-4 py-3 rounded-lg border-2 focus:outline-none focus:ring-2"
+                  style={{ borderColor: theme.colors.border, backgroundColor: theme.colors.surface, color: theme.colors.text }}
+                />
+              </div>
+
               <div>
                 <label className="block text-sm font-medium mb-2" style={{ color: theme.colors.text }}>
                   Publish Date

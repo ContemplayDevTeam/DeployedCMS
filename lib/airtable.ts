@@ -740,12 +740,16 @@ export class AirtableBackend {
     }
   }
 
-  async updateQueueItem(recordId: string, updates: { publishDate?: string; publishTime?: string }): Promise<boolean> {
+  async updateQueueItem(recordId: string, updates: { fileName?: string; publishDate?: string; publishTime?: string }): Promise<boolean> {
     try {
       console.log('📝 Updating queue item:', recordId)
       console.log('📋 Updates:', updates)
 
       const fields: Record<string, unknown> = {}
+
+      if (updates.fileName) {
+        fields['File Name'] = updates.fileName
+      }
 
       if (updates.publishDate) {
         fields['Publish Date'] = updates.publishDate
