@@ -49,11 +49,11 @@ function AcceptInviteContent() {
         setEmail(data.email)
         setWorkspaceCode(data.workspaceCode)
         setStatus('success')
-        setMessage('Welcome! Your account has been created and you\'re now logged in.')
+        setMessage('Welcome! Let\'s complete your profile setup.')
 
-        // Redirect to upload page after 2 seconds
+        // Redirect to setup-account page after 2 seconds
         setTimeout(() => {
-          router.push('/upload')
+          router.push(`/setup-account?email=${encodeURIComponent(data.email)}&workspace=${encodeURIComponent(data.workspaceCode)}`)
         }, 2000)
 
       } catch (err) {
@@ -211,7 +211,7 @@ function AcceptInviteContent() {
                     <p className="font-mono font-semibold">{workspaceCode}</p>
                   </div>
                   <p className="text-sm opacity-70 pt-2" style={{ color: theme.colors.background }}>
-                    Redirecting to upload page...
+                    Redirecting to account setup...
                   </p>
                 </motion.div>
               )}

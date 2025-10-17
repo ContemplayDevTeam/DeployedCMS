@@ -12,6 +12,7 @@ export default function Login() {
   const { theme, setEmailTheme, setPasswordTheme } = useTheme()
   const [formData, setFormData] = useState({
     email: '',
+    password: '',
     themePassword: ''
   })
   const [isLoading, setIsLoading] = useState(false)
@@ -38,7 +39,8 @@ export default function Login() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          email: formData.email
+          email: formData.email,
+          password: formData.password || undefined
         }),
       })
 
@@ -52,6 +54,9 @@ export default function Login() {
       localStorage.setItem('uploader_email', formData.email)
       if (formData.themePassword) {
         localStorage.setItem('theme_password', formData.themePassword)
+      } else if (data.workspaceCode) {
+        localStorage.setItem('theme_password', data.workspaceCode)
+        setPasswordTheme(data.workspaceCode)
       }
       localStorage.setItem('uploader_userId', data.userId)
       localStorage.setItem('uploader_action', 'login')
@@ -245,6 +250,45 @@ export default function Login() {
                     </svg>
                   </div>
                 </div>
+              </div>
+
+              {/* Password Input */}
+              <div>
+                <label htmlFor="password" className="block text-sm font-semibold mb-3" style={{ color: theme.colors.background }}>
+                  Password (Optional)
+                </label>
+                <div className="relative">
+                  <input
+                    id="password"
+                    name="password"
+                    type="password"
+                    placeholder="Enter password if you have one"
+                    className="w-full px-4 py-4 pl-12 rounded-xl border-2 transition-all duration-300 focus:outline-none focus:ring-4"
+                    style={{
+                      borderColor: `${theme.colors.background}30`,
+                      backgroundColor: `${theme.colors.background}90`,
+                      color: theme.colors.text
+                    }}
+                    value={formData.password}
+                    onChange={handleChange}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = theme.colors.accent
+                      e.target.style.boxShadow = `0 0 0 4px ${theme.colors.accent}40`
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = `${theme.colors.background}30`
+                      e.target.style.boxShadow = 'none'
+                    }}
+                  />
+                  <div className="absolute left-4 top-1/2 transform -translate-y-1/2">
+                    <svg className="w-5 h-5" style={{ color: theme.colors.text + '80' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                    </svg>
+                  </div>
+                </div>
+                <p className="mt-2 text-xs opacity-70" style={{ color: theme.colors.background }}>
+                  Leave blank to use magic link login
+                </p>
               </div>
 
               {/* Theme Password Input */}
