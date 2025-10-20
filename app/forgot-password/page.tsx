@@ -1,28 +1,24 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { useTheme } from '../../components/ThemeProvider'
 import { DynamicLogo } from '../../components/DynamicLogo'
 
-export default function Login() {
-  const router = useRouter()
-  const { theme, setEmailTheme, setPasswordTheme } = useTheme()
-  const [formData, setFormData] = useState({
-    email: '',
-    password: ''
-  })
+export default function ForgotPassword() {
+  const { theme, setEmailTheme } = useTheme()
+  const [email, setEmail] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
+  const [success, setSuccess] = useState(false)
 
   // Update theme based on email
   useEffect(() => {
-    if (formData.email && formData.email.includes('@')) {
-      setEmailTheme(formData.email)
+    if (email && email.includes('@')) {
+      setEmailTheme(email)
     }
-  }, [formData.email, setEmailTheme])
+  }, [email, setEmailTheme])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -30,52 +26,87 @@ export default function Login() {
     setIsLoading(true)
 
     try {
-      const response = await fetch('/api/auth/login', {
+      const response = await fetch('/api/auth/forgot-password', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          email: formData.email,
-          password: formData.password || undefined
-        }),
+        body: JSON.stringify({ email }),
       })
 
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.error || 'Login failed')
+        throw new Error(data.error || 'Failed to send reset link')
       }
 
-      // Store user data
-      localStorage.setItem('uploader_email', formData.email)
-      if (data.workspaceCode) {
-        localStorage.setItem('theme_password', data.workspaceCode)
-        setPasswordTheme(data.workspaceCode)
-      }
-      localStorage.setItem('uploader_userId', data.userId)
-      localStorage.setItem('uploader_action', 'login')
-      localStorage.setItem('uploader_timestamp', new Date().toISOString())
-
-      // Dispatch custom event to notify Header component
-      window.dispatchEvent(new Event('emailSaved'))
-
-      // Set theme based on email
-      setEmailTheme(formData.email)
-
-      router.push('/upload')
+      setSuccess(true)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed')
+      setError(err instanceof Error ? err.message : 'Failed to send reset link')
     } finally {
       setIsLoading(false)
     }
   }
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    })
+  if (success) {
+    return (
+      <div className="min-h-screen relative overflow-hidden" style={{
+        background: `linear-gradient(135deg, ${theme.colors.primary} 0%, ${theme.colors.secondary} 50%, ${theme.colors.accent} 100%)`
+      }}>
+        <div className="relative z-10 flex min-h-screen items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+          <motion.div
+            className="w-full max-w-md"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+          >
+            <div className="text-center mb-8">
+              <motion.div
+                className="mb-6 relative inline-flex"
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ duration: 0.5, delay: 0.2 }}
+              >
+                <DynamicLogo size="lg" />
+              </motion.div>
+            </div>
+
+            <motion.div
+              className="backdrop-blur-lg p-8 rounded-3xl shadow-2xl border border-opacity-20 text-center"
+              style={{
+                backgroundColor: `${theme.colors.background}15`,
+                borderColor: theme.colors.background,
+                boxShadow: `0 25px 50px -12px ${theme.colors.secondary}40`
+              }}
+            >
+              <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
+                style={{ backgroundColor: theme.colors.accent }}
+              >
+                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: theme.colors.background }}>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <h2 className="text-2xl font-bold mb-2" style={{ color: theme.colors.background }}>
+                Check Your Email
+              </h2>
+              <p className="text-lg opacity-90 mb-6" style={{ color: theme.colors.background }}>
+                We&apos;ve sent a password reset link to <strong>{email}</strong>
+              </p>
+              <p className="text-sm opacity-70 mb-6" style={{ color: theme.colors.background }}>
+                Click the link in the email to reset your password. The link will expire in 1 hour.
+              </p>
+              <Link
+                href="/login"
+                className="inline-block px-6 py-3 rounded-xl font-semibold transition-all hover:opacity-90"
+                style={{ backgroundColor: theme.colors.accent, color: theme.colors.background }}
+              >
+                Back to Login
+              </Link>
+            </motion.div>
+          </motion.div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -106,19 +137,6 @@ export default function Login() {
           transition={{
             rotate: { duration: 25, repeat: Infinity, ease: "linear" },
             scale: { duration: 6, repeat: Infinity, ease: "easeInOut" }
-          }}
-        />
-        <motion.div
-          className="absolute top-1/4 left-1/4 w-64 h-64 rounded-full opacity-10"
-          style={{ backgroundColor: theme.colors.text }}
-          animate={{
-            x: [0, 50, 0],
-            y: [0, -30, 0]
-          }}
-          transition={{
-            duration: 8,
-            repeat: Infinity,
-            ease: "easeInOut"
           }}
         />
       </div>
@@ -162,7 +180,7 @@ export default function Login() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.3 }}
             >
-              Welcome Back
+              Forgot Password?
             </motion.h2>
             <motion.p
               className="text-lg opacity-90"
@@ -171,11 +189,11 @@ export default function Login() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.4 }}
             >
-              Enter your email to continue your journey
+              No worries, we&apos;ll send you reset instructions
             </motion.p>
           </div>
 
-          {/* Login Form */}
+          {/* Form */}
           <motion.div
             className="backdrop-blur-lg p-8 rounded-3xl shadow-2xl border border-opacity-20"
             style={{
@@ -228,8 +246,8 @@ export default function Login() {
                       backgroundColor: `${theme.colors.background}90`,
                       color: theme.colors.text
                     }}
-                    value={formData.email}
-                    onChange={handleChange}
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                     onFocus={(e) => {
                       e.target.style.borderColor = theme.colors.accent
                       e.target.style.boxShadow = `0 0 0 4px ${theme.colors.accent}40`
@@ -247,52 +265,6 @@ export default function Login() {
                 </div>
               </div>
 
-              {/* Password Input */}
-              <div>
-                <div className="flex justify-between items-center mb-3">
-                  <label htmlFor="password" className="block text-sm font-semibold" style={{ color: theme.colors.background }}>
-                    Password
-                  </label>
-                  <Link
-                    href="/forgot-password"
-                    className="text-xs font-medium transition-all duration-300 hover:underline"
-                    style={{ color: theme.colors.accent }}
-                  >
-                    Forgot password?
-                  </Link>
-                </div>
-                <div className="relative">
-                  <input
-                    id="password"
-                    name="password"
-                    type="password"
-                    required
-                    placeholder="Enter your password"
-                    className="w-full px-4 py-4 pl-12 rounded-xl border-2 transition-all duration-300 focus:outline-none focus:ring-4"
-                    style={{
-                      borderColor: `${theme.colors.background}30`,
-                      backgroundColor: `${theme.colors.background}90`,
-                      color: theme.colors.text
-                    }}
-                    value={formData.password}
-                    onChange={handleChange}
-                    onFocus={(e) => {
-                      e.target.style.borderColor = theme.colors.accent
-                      e.target.style.boxShadow = `0 0 0 4px ${theme.colors.accent}40`
-                    }}
-                    onBlur={(e) => {
-                      e.target.style.borderColor = `${theme.colors.background}30`
-                      e.target.style.boxShadow = 'none'
-                    }}
-                  />
-                  <div className="absolute left-4 top-1/2 transform -translate-y-1/2">
-                    <svg className="w-5 h-5" style={{ color: theme.colors.text + '80' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-                    </svg>
-                  </div>
-                </div>
-              </div>
-
               {/* Submit Button */}
               <motion.button
                 type="submit"
@@ -305,14 +277,7 @@ export default function Login() {
                 }}
                 whileHover={{ scale: 1.02, y: -1 }}
                 whileTap={{ scale: 0.98 }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.boxShadow = `0 15px 35px -5px ${theme.colors.accent}80`
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.boxShadow = `0 10px 25px -5px ${theme.colors.accent}60`
-                }}
               >
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-0 group-hover:opacity-20 transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
                 <div className="relative flex items-center justify-center space-x-2">
                   {isLoading ? (
                     <>
@@ -322,14 +287,14 @@ export default function Login() {
                         animate={{ rotate: 360 }}
                         transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
                       />
-                      <span>Signing you in...</span>
+                      <span>Sending...</span>
                     </>
                   ) : (
                     <>
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                       </svg>
-                      <span>Sign In</span>
+                      <span>Send Reset Link</span>
                     </>
                   )}
                 </div>
@@ -343,29 +308,17 @@ export default function Login() {
               animate={{ opacity: 1 }}
               transition={{ duration: 0.5, delay: 0.7 }}
             >
-              <p className="text-sm" style={{ color: theme.colors.background }}>
-                Don&apos;t have an account?{' '}
-                <Link
-                  href="/signup"
-                  className="font-semibold transition-all duration-300 hover:underline"
-                  style={{ color: theme.colors.accent }}
-                >
-                  Create one here
-                </Link>
-              </p>
-              <div className="mt-4 pt-4 border-t border-opacity-20" style={{ borderColor: theme.colors.background }}>
-                <Link
-                  href="/"
-                  className="text-sm font-medium transition-all duration-300 hover:underline"
-                  style={{ color: theme.colors.background }}
-                >
-                  ← Back to Home
-                </Link>
-              </div>
+              <Link
+                href="/login"
+                className="text-sm font-medium transition-all duration-300 hover:underline"
+                style={{ color: theme.colors.background }}
+              >
+                ← Back to Login
+              </Link>
             </motion.div>
           </motion.div>
         </motion.div>
       </div>
     </div>
   )
-} 
+}
