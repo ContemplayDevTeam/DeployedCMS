@@ -3,6 +3,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   /* Performance optimizations */
   serverExternalPackages: ['airtable', 'cloudinary'],
+  output: 'standalone',
 
   // Image optimization
   images: {
