@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { airtable } from '@/lib/airtable'
+import { AirtableBackend } from '@/lib/airtable'
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,6 +11,19 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
+
+    // Check environment variables
+    const apiKey = process.env.AIRTABLE_API_KEY
+    const baseId = process.env.AIRTABLE_BASE_ID
+
+    if (!apiKey || !baseId) {
+      return NextResponse.json(
+        { error: 'Airtable configuration missing' },
+        { status: 500 }
+      )
+    }
+
+    const airtable = new AirtableBackend(apiKey, baseId)
 
     // Update the queue item in Airtable
     await airtable.updateQueueItem(recordId, {
