@@ -6,6 +6,7 @@ import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline'
 import { useTheme } from './ThemeProvider'
 import { DynamicLogo } from './DynamicLogo'
 import { NotificationBell } from './NotificationBell'
+import { AdminWorkspaceSwitcher } from './AdminWorkspaceSwitcher'
 import { useState, useEffect } from 'react'
 
 export function Header() {
@@ -92,8 +93,9 @@ export function Header() {
                 </button>
               </div>
 
-              {/* Right side - Notifications & Auth buttons */}
+              {/* Right side - Admin Switcher, Notifications & Auth buttons */}
               <div className="hidden lg:flex lg:items-center lg:space-x-2 xl:space-x-4">
+                <AdminWorkspaceSwitcher />
                 {storedEmail && <NotificationBell />}
                 {storedEmail ? (
                   <button

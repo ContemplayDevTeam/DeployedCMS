@@ -83,12 +83,16 @@ export default function Dashboard() {
   const [showShareModal, setShowShareModal] = useState(false)
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteMessage, setInviteMessage] = useState('')
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [selectedWorkspace, setSelectedWorkspace] = useState('')
+  const [workspaces, setWorkspaces] = useState<Array<{code: string, name: string, theme: string}>>([])
 
   useEffect(() => {
     const email = localStorage.getItem('uploader_email')
     if (email) {
       setStoredEmail(email)
       loadDashboardData(email)
+      checkAdminStatus(email)
     } else {
       setError('Please login first')
       setIsLoading(false)
@@ -102,6 +106,39 @@ export default function Dashboard() {
       window.removeEventListener('openShareModal', handleOpenShareModal)
     }
   }, [])
+
+  const checkAdminStatus = async (email: string) => {
+    try {
+      const response = await fetch('/api/admin/check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      })
+      const data = await response.json()
+      setIsAdmin(data.isAdmin)
+
+      if (data.isAdmin) {
+        // Get workspaces
+        const wsResponse = await fetch('/api/admin/workspaces', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        })
+        const wsData = await wsResponse.json()
+        setWorkspaces(wsData.workspaces || [])
+
+        // Set current workspace as default
+        const currentWorkspace = localStorage.getItem('theme_password') || 'admin'
+        setSelectedWorkspace(currentWorkspace)
+      } else {
+        // For non-admins, use their current workspace
+        const currentWorkspace = localStorage.getItem('theme_password') || ''
+        setSelectedWorkspace(currentWorkspace)
+      }
+    } catch (error) {
+      console.error('Error checking admin status:', error)
+    }
+  }
 
   const loadDashboardData = async (email: string) => {
     setIsLoading(true)
@@ -574,6 +611,29 @@ export default function Dashboard() {
             </p>
 
             <div className="space-y-4">
+              {isAdmin && (
+                <div>
+                  <label className="block text-sm font-medium mb-2" style={{ color: theme.colors.text }}>
+                    Workspace <span className="text-purple-600">(Admin Only)</span>
+                  </label>
+                  <select
+                    value={selectedWorkspace}
+                    onChange={(e) => setSelectedWorkspace(e.target.value)}
+                    className="w-full px-4 py-3 rounded-lg border-2 focus:outline-none focus:ring-2"
+                    style={{ borderColor: theme.colors.border, backgroundColor: theme.colors.surface, color: theme.colors.text }}
+                  >
+                    {workspaces.map((ws) => (
+                      <option key={ws.code} value={ws.code}>
+                        {ws.name} ({ws.code})
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs mt-1" style={{ color: theme.colors.textSecondary }}>
+                    Select which workspace to invite the user to
+                  </p>
+                </div>
+              )}
+
               <div>
                 <label className="block text-sm font-medium mb-2" style={{ color: theme.colors.text }}>
                   Email Address
@@ -614,7 +674,7 @@ export default function Dashboard() {
                         body: JSON.stringify({
                           email: inviteEmail,
                           message: inviteMessage,
-                          workspaceCode: localStorage.getItem('theme_password'),
+                          workspaceCode: isAdmin ? selectedWorkspace : localStorage.getItem('theme_password'),
                           senderEmail: storedEmail
                         })
                       })
