@@ -102,7 +102,7 @@ export function Header() {
                     onClick={() => {
                       localStorage.removeItem('uploader_email')
                       localStorage.removeItem('theme_password')
-                      window.location.href = '/login'
+                      window.location.href = '/landing'
                     }}
                     className="inline-flex items-center rounded-lg px-3 xl:px-4 py-2 text-sm font-medium transition-all hover:shadow-md hover:opacity-90 whitespace-nowrap"
                     style={{ color: theme.colors.background, backgroundColor: theme.colors.accent }}
@@ -112,7 +112,7 @@ export function Header() {
                 ) : (
                   <>
                     <Link
-                      href="/login"
+                      href="/landing"
                       className="text-sm font-medium transition-colors hover:opacity-80 whitespace-nowrap"
                       style={{ color: '#42504d' }}
                     >
@@ -195,7 +195,7 @@ export function Header() {
                     onClick={() => {
                       localStorage.removeItem('uploader_email')
                       localStorage.removeItem('theme_password')
-                      window.location.href = '/login'
+                      window.location.href = '/landing'
                     }}
                     className="block py-2 pl-3 pr-4 text-base font-medium transition-colors hover:opacity-80 w-full text-left"
                     style={{ color: '#42504d' }}
@@ -206,7 +206,7 @@ export function Header() {
                   <>
                     <Disclosure.Button
                       as={Link}
-                      href="/login"
+                      href="/landing"
                       className="block py-2 pl-3 pr-4 text-base font-medium transition-colors hover:opacity-80"
                       style={{ color: '#42504d' }}
                     >
