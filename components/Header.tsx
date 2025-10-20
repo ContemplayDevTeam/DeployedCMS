@@ -5,7 +5,6 @@ import { Disclosure } from '@headlessui/react'
 import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline'
 import { useTheme } from './ThemeProvider'
 import { DynamicLogo } from './DynamicLogo'
-import { NotificationBell } from './NotificationBell'
 import { AdminWorkspaceSwitcher } from './AdminWorkspaceSwitcher'
 import { useState, useEffect } from 'react'
 
@@ -55,48 +54,49 @@ export function Header() {
                 </Link>
               </div>
 
-              {/* Center navigation - Desktop only */}
-              <div className="hidden lg:flex lg:flex-1 lg:justify-center lg:items-center lg:space-x-4 xl:space-x-8">
-                <Link
-                  href="/dashboard"
-                  className="inline-flex items-center px-2 xl:px-3 py-1 text-sm font-medium transition-colors hover:opacity-80 whitespace-nowrap"
-                  style={{ color: theme.colors.text }}
-                >
-                  Dashboard
-                </Link>
-                <Link
-                  href="/upload"
-                  className="inline-flex items-center px-2 xl:px-3 py-1 text-sm font-medium transition-colors hover:opacity-80 whitespace-nowrap"
-                  style={{ color: theme.colors.text }}
-                >
-                  Upload
-                </Link>
-                <Link
-                  href="/bank"
-                  className="inline-flex items-center px-2 xl:px-3 py-1 text-sm font-medium transition-colors hover:opacity-80 whitespace-nowrap"
-                  style={{ color: theme.colors.text }}
-                >
-                  Image Bank
-                </Link>
-                <button
-                  onClick={() => {
-                    const event = new CustomEvent('openShareModal')
-                    window.dispatchEvent(event)
-                  }}
-                  className="inline-flex items-center space-x-1 px-2 xl:px-3 py-1 text-xs font-medium transition-colors hover:opacity-80 whitespace-nowrap rounded"
-                  style={{ backgroundColor: theme.colors.accent, color: theme.colors.background }}
-                >
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-                  </svg>
-                  <span>Share</span>
-                </button>
-              </div>
+              {/* Center navigation - Desktop only - Only show when logged in */}
+              {storedEmail && (
+                <div className="hidden lg:flex lg:flex-1 lg:justify-center lg:items-center lg:space-x-4 xl:space-x-8">
+                  <Link
+                    href="/dashboard"
+                    className="inline-flex items-center px-2 xl:px-3 py-1 text-sm font-medium transition-colors hover:opacity-80 whitespace-nowrap"
+                    style={{ color: theme.colors.text }}
+                  >
+                    Dashboard
+                  </Link>
+                  <Link
+                    href="/upload"
+                    className="inline-flex items-center px-2 xl:px-3 py-1 text-sm font-medium transition-colors hover:opacity-80 whitespace-nowrap"
+                    style={{ color: theme.colors.text }}
+                  >
+                    Upload
+                  </Link>
+                  <Link
+                    href="/bank"
+                    className="inline-flex items-center px-2 xl:px-3 py-1 text-sm font-medium transition-colors hover:opacity-80 whitespace-nowrap"
+                    style={{ color: theme.colors.text }}
+                  >
+                    Image Bank
+                  </Link>
+                  <button
+                    onClick={() => {
+                      const event = new CustomEvent('openShareModal')
+                      window.dispatchEvent(event)
+                    }}
+                    className="inline-flex items-center space-x-1 px-2 xl:px-3 py-1 text-xs font-medium transition-colors hover:opacity-80 whitespace-nowrap rounded"
+                    style={{ backgroundColor: theme.colors.accent, color: theme.colors.background }}
+                  >
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                    </svg>
+                    <span>Share</span>
+                  </button>
+                </div>
+              )}
 
-              {/* Right side - Admin Switcher, Notifications & Auth buttons */}
+              {/* Right side - Admin Switcher & Auth buttons */}
               <div className="hidden lg:flex lg:items-center lg:space-x-2 xl:space-x-4">
                 {storedEmail && <AdminWorkspaceSwitcher />}
-                {storedEmail && <NotificationBell />}
                 {storedEmail ? (
                   <button
                     onClick={() => {
@@ -147,46 +147,49 @@ export function Header() {
 
           {/* Mobile menu */}
           <Disclosure.Panel className="md:hidden">
-            <div className="space-y-1 pb-3 pt-2" style={{ backgroundColor: theme.colors.surface }}>
-              <Disclosure.Button
-                as={Link}
-                href="/dashboard"
-                className="block py-2 pl-3 pr-4 text-base font-medium transition-colors hover:opacity-80"
-                style={{ color: '#42504d' }}
-              >
-                Dashboard
-              </Disclosure.Button>
-              <Disclosure.Button
-                as={Link}
-                href="/upload"
-                className="block py-2 pl-3 pr-4 text-base font-medium transition-colors hover:opacity-80"
-                style={{ color: '#42504d' }}
-              >
-                Upload
-              </Disclosure.Button>
-              <Disclosure.Button
-                as={Link}
-                href="/bank"
-                className="block py-2 pl-3 pr-4 text-base font-medium transition-colors hover:opacity-80"
-                style={{ color: '#42504d' }}
-              >
-                Image Bank
-              </Disclosure.Button>
-              <Disclosure.Button
-                as="button"
-                onClick={() => {
-                  const event = new CustomEvent('openShareModal')
-                  window.dispatchEvent(event)
-                }}
-                className="flex items-center space-x-2 py-2 pl-3 pr-4 text-base font-medium transition-colors hover:opacity-80 w-full"
-                style={{ color: '#42504d' }}
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-                </svg>
-                <span>Share</span>
-              </Disclosure.Button>
-            </div>
+            {/* Only show navigation menu items when logged in */}
+            {storedEmail && (
+              <div className="space-y-1 pb-3 pt-2" style={{ backgroundColor: theme.colors.surface }}>
+                <Disclosure.Button
+                  as={Link}
+                  href="/dashboard"
+                  className="block py-2 pl-3 pr-4 text-base font-medium transition-colors hover:opacity-80"
+                  style={{ color: '#42504d' }}
+                >
+                  Dashboard
+                </Disclosure.Button>
+                <Disclosure.Button
+                  as={Link}
+                  href="/upload"
+                  className="block py-2 pl-3 pr-4 text-base font-medium transition-colors hover:opacity-80"
+                  style={{ color: '#42504d' }}
+                >
+                  Upload
+                </Disclosure.Button>
+                <Disclosure.Button
+                  as={Link}
+                  href="/bank"
+                  className="block py-2 pl-3 pr-4 text-base font-medium transition-colors hover:opacity-80"
+                  style={{ color: '#42504d' }}
+                >
+                  Image Bank
+                </Disclosure.Button>
+                <Disclosure.Button
+                  as="button"
+                  onClick={() => {
+                    const event = new CustomEvent('openShareModal')
+                    window.dispatchEvent(event)
+                  }}
+                  className="flex items-center space-x-2 py-2 pl-3 pr-4 text-base font-medium transition-colors hover:opacity-80 w-full"
+                  style={{ color: '#42504d' }}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                  </svg>
+                  <span>Share</span>
+                </Disclosure.Button>
+              </div>
+            )}
             <div className="border-t pb-3 pt-4" style={{ borderColor: theme.colors.accent, backgroundColor: theme.colors.surface }}>
               <div className="space-y-1">
                 {storedEmail ? (
