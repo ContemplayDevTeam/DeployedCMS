@@ -15,11 +15,8 @@ export function isAdmin(email: string | null | undefined): boolean {
  * Add more workspace codes here as needed
  */
 export const AVAILABLE_WORKSPACES = [
-  { code: 'homegrown', name: 'Homegrown National Park', theme: 'healthcare' },
-  { code: 'contemplay', name: 'ContemPlay', theme: 'tech' },
-  { code: 'corporate', name: 'Corporate Workspace', theme: 'corporate' },
-  { code: 'academic', name: 'Academic Workspace', theme: 'academic' },
-  // Add more as needed
+  { code: 'homegrown', name: 'Homegrown National Park', theme: 'homegrownnationalpark' },
+  { code: 'default', name: 'Default Theme', theme: 'default' },
 ]
 
 /**

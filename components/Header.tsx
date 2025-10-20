@@ -95,7 +95,7 @@ export function Header() {
 
               {/* Right side - Admin Switcher, Notifications & Auth buttons */}
               <div className="hidden lg:flex lg:items-center lg:space-x-2 xl:space-x-4">
-                <AdminWorkspaceSwitcher />
+                {storedEmail && <AdminWorkspaceSwitcher />}
                 {storedEmail && <NotificationBell />}
                 {storedEmail ? (
                   <button
