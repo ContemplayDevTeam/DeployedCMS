@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
     const tokenData = `${email}:${workspaceCode}:${timestamp}`
     const inviteToken = Buffer.from(tokenData).toString('base64')
 
-    // Generate invite link
+    // Generate invite link (uses NEXT_PUBLIC_BASE_URL from environment)
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
     const inviteLink = `${baseUrl}/accept-invite?token=${inviteToken}`
 
