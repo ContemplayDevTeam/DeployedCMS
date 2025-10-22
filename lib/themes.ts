@@ -61,10 +61,10 @@ export const themes: Record<string, Theme> = {
       error: '#ef4444'         // Red
     },
     logo: {
-      icon: 'C',
-      bgColor: '#8FA8A8',
+      icon: '/contemplay-logo.svg',
+      bgColor: 'transparent',
       textColor: '#ffffff',
-      shape: 'rounded'
+      shape: 'square'
     },
     description: 'Original app theme'
   },

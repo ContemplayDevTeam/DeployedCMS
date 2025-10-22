@@ -307,21 +307,6 @@ function SetupAccountContent() {
             </form>
           </motion.div>
 
-          {/* Skip Option (optional) */}
-          <motion.div
-            className="text-center mt-6"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.6 }}
-          >
-            <button
-              onClick={() => router.push('/upload')}
-              className="text-sm opacity-80 hover:opacity-100 transition-opacity"
-              style={{ color: theme.colors.background }}
-            >
-              Skip for now (you&apos;ll use magic links only)
-            </button>
-          </motion.div>
         </motion.div>
       </div>
     </div>

@@ -158,13 +158,10 @@ export default function Landing() {
                     )}
                   </button>
 
-                  {/* Forgot Password & Sign Up Links */}
-                  <div className="flex justify-between items-center text-sm">
+                  {/* Forgot Password Link */}
+                  <div className="text-left text-sm">
                     <Link href="/forgot-password" className="transition-colors hover:underline" style={{ color: '#f05d43' }}>
                       Forgot password?
-                    </Link>
-                    <Link href="/signup" className="transition-colors hover:underline" style={{ color: '#f05d43' }}>
-                      Create account
                     </Link>
                   </div>
                 </form>

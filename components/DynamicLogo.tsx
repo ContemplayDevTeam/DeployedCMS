@@ -18,8 +18,8 @@ export function DynamicLogo({ size = 'md', className = '' }: DynamicLogoProps) {
   }
 
   const imageSizeClasses = {
-    sm: 'h-8',
-    md: 'h-12',
+    sm: 'h-4',
+    md: 'h-5',
     lg: 'h-16',
     xl: 'h-24'
   }

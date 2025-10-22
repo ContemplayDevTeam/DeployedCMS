@@ -46,11 +46,6 @@ export function Header() {
               <div className="flex-shrink-0">
                 <Link href="/" className="flex items-center space-x-2">
                   <DynamicLogo />
-                  {theme.name !== 'Homegrown National Park' && (
-                    <span className="hidden font-bold sm:block" style={{ color: theme.colors.text }}>
-                      Experience Queue
-                    </span>
-                  )}
                 </Link>
               </div>
 
