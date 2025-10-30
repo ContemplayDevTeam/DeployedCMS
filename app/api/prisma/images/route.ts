@@ -35,16 +35,20 @@ export async function POST(request: NextRequest) {
         user: true,
         image: true,
         messages: {
+          where: {
+            score: {
+              not: null // Only fetch messages that have been scored (moderated)
+            }
+          },
           orderBy: {
             createdAt: 'asc' // Sort messages chronologically (oldest first)
           }
-          // Fetch ALL messages for each conversation
         }
       },
       orderBy: {
         createdAt: 'desc'
-      },
-      take: 50 // Limit to recent 50 conversations
+      }
+      // No limit - fetch ALL conversations to show all ContemPlaytions
     })
 
     // Map to dashboard format
@@ -64,7 +68,8 @@ export async function POST(request: NextRequest) {
         message: msg.message,
         username: msg.username || 'Unknown',
         createdAt: msg.createdAt.toISOString(),
-        assistantNumber: msg.assistantNumber || undefined
+        assistantNumber: msg.assistantNumber || undefined,
+        score: msg.score ?? undefined
       }))
     }))
 
